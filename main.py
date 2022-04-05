@@ -49,7 +49,7 @@ pyautogui.typewrite("sa")
 pyautogui.press('enter')
 time.sleep(2)
 # Your database password
-pyautogui.typewrite("piano1996")
+pyautogui.typewrite("password")
 pyautogui.press('enter')
 time.sleep(2)
 pyautogui.typewrite("master")
