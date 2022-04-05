@@ -25,7 +25,7 @@ pyautogui.press('enter')
 time.sleep(10)
 pyautogui.press('enter')
 
-
+# Run installer.bat
 p = subprocess.Popen(['C:/Users/ewanf/Desktop/Test/bin/installer.bat'],
                      creationflags=subprocess.CREATE_NEW_CONSOLE)
 
