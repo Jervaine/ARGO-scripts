@@ -217,6 +217,10 @@ warning_page = [[sg.Text('Warning!', font=('Arial', 18), size=(40, 2))],
                 [sg.Button('Yes', key="wap_yes")],
                 [sg.Button('No', key="wap_no")]]
 
+run_bank_config = []
+
+run_system_config = []
+
 layout = [[sg.Column(welcome_page, key='-COL1-'), sg.Column(folder_select_page, visible=False, key='-COL2-'),
            sg.Column(get_credentials_page, visible=False, key='-COL3-'),
            sg.Column(run_customer_installer_page, visible=False, key='-COL4-'),
