@@ -127,6 +127,56 @@ def run_installer(host_name_, db_username_, db_password_, logical_db_name_, wind
         window.write_event_value("-I THREAD DONE-", "Done")
         ok = windll.user32.BlockInput(False)
 
+def run_system_config(directory, windows_username_):
+    directory += "./bin/configure.bat"
+    p = subprocess.Popen(['runas', '/profile', '/user:' + windows_username_,
+                          directory],
+                         creationflags=subprocess.CREATE_NEW_CONSOLE)
+    ok = windll.user32.BlockInput(True)
+    time.sleep(5)
+    pyautogui.typewrite('2')
+    pyautogui.press('enter')
+    time.sleep(1)
+    pyautogui.typewrite('y')
+    pyautogui.press('enter')
+    time.sleep(1)
+    pyautogui.typewrite('y')
+    pyautogui.press('enter')
+    time.sleep(1)
+    pyautogui.typewrite('i')
+    pyautogui.press('enter')
+    time.sleep(1)
+    pyautogui.typewrite('a')
+    pyautogui.press('enter')
+    ok = windll.user32.BlockInput(False)
+
+def run_bank_config(directory, windows_username_):
+    directory += "./bin/configure.bat"
+    p = subprocess.Popen(['runas', '/profile', '/user:' + windows_username_,
+                          directory],
+                         creationflags=subprocess.CREATE_NEW_CONSOLE)
+    ok = windll.user32.BlockInput(True)
+    time.sleep(5)
+    pyautogui.typewrite('1')
+    pyautogui.press('enter')
+    time.sleep(1)
+    pyautogui.typewrite('y')
+    pyautogui.press('enter')
+    time.sleep(1)
+    pyautogui.typewrite('y')
+    pyautogui.press('enter')
+    time.sleep(1)
+    pyautogui.typewrite('argo')
+    pyautogui.press('enter')
+    time.sleep(1)
+    pyautogui.typewrite('1')
+    pyautogui.press('enter')
+    time.sleep(1)
+    pyautogui.typewrite('a')
+    pyautogui.press('enter')
+    ok = windll.user32.BlockInput(False)
+
+
 # Layout Pages
 welcome_page = [[sg.Text('Oasis Build Installation', font=('Arial', 18), size=(40, 2))],
                 [sg.Text('Press continue to start the Oasis build installation process', size=(40, 3))],
