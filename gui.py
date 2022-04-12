@@ -1,12 +1,15 @@
 import PySimpleGUI as sg
 import zipfile
 import shutil
-import os
 import subprocess
 import pyautogui
 import time
 import threading
 from ctypes import *
+import pytesseract
+import cv2
+
+pytesseract.pytesseract.tesseract_cmd = 'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
 
 
 # Functions
@@ -33,7 +36,7 @@ def run_customer_installer(windows_username_, windows_password_, directory):
     time.sleep(2)
     pyautogui.typewrite("I")
     pyautogui.press('enter')
-    time.sleep(5)
+    time.sleep(7)
     pyautogui.press('enter')
     ok = windll.user32.BlockInput(False)
     window.write_event_value("-CI THREAD DONE-", "DONE")
@@ -93,6 +96,7 @@ def run_installer(host_name_, db_username_, db_password_, logical_db_name_, wind
     window.write_event_value("-WARNING-", "warning")
     flag = event_obj.wait()
     if flag:
+        ok = windll.user32.BlockInput(True)
         pyautogui.typewrite('y')
         pyautogui.press('enter')
         time.sleep(1)
@@ -107,8 +111,21 @@ def run_installer(host_name_, db_username_, db_password_, logical_db_name_, wind
         time.sleep(3)
         pyautogui.typewrite('I')
         pyautogui.press('enter')
+        while True:
+            time.sleep(10)
+            myScreenshot = pyautogui.screenshot()
+            myScreenshot.save(r'C:\Users\ewanf\PycharmProjects\ARGO-scripts\installerScreenshot.png')
+            img = cv2.imread('test2.jpg')
+            img = cv2.resize(img, (600, 360))
+            if 'INSTALLATION COMPLETED' in pytesseract.image_to_string(img):
+                break
 
-
+        time.sleep(5)
+        pyautogui.press('enter')
+        pyautogui.press('enter')
+        time.sleep(2)
+        window.write_event_value("-I THREAD DONE-", "Done")
+        ok = windll.user32.BlockInput(False)
 
 
 # Layout Pages
@@ -218,10 +235,10 @@ while True:
     if event == '-WARNING-':
         if sg.Window("Warning!", [[sg.Text("Drop and recreate the database?\nThis action is non-reversible!")],
                                   [sg.Yes(), sg.No()]]).read(close=True)[0] == "Yes":
-                event_obj.set()
+            event_obj.set()
         else:
             break
-
-
+    if event == '-I THREAD DONE-':
+        break
 
 window.close()
