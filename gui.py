@@ -129,6 +129,7 @@ def run_installer(host_name_, db_username_, db_password_, logical_db_name_, wind
 
 
 # Layout Pages
+sg.theme("SystemDefaultForReal")
 welcome_page = [[sg.Text('Oasis Build Installation', font=('Arial', 18), size=(40, 2))],
                 [sg.Text('Press continue to start the Oasis build installation process', size=(40, 3))],
                 [sg.Button('Continue', key="wp_continue")]]
@@ -176,7 +177,7 @@ layout = [[sg.Column(welcome_page, key='-COL1-'), sg.Column(folder_select_page, 
            sg.Column(warning_page, visible=False, key='-COL7-')]]
 
 # Start GUI
-window = sg.Window('Oasis Build Installer', layout, resizable=True)
+window = sg.Window('Oasis Build Installer', layout, resizable=True,)
 # Behavior of GUI
 folder_location = ""
 path_to_install_zip_file = ""
