@@ -127,6 +127,7 @@ def run_installer(host_name_, db_username_, db_password_, logical_db_name_, wind
         window.write_event_value("-I THREAD DONE-", "Done")
         ok = windll.user32.BlockInput(False)
 
+fuck you
 
 # Layout Pages
 sg.theme("SystemDefaultForReal")
