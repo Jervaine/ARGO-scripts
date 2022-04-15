@@ -24,7 +24,7 @@ def dialog():
 
 window = Tk()
 window.title('Installation Info')
-window.geometry('300x350')
+window.geometry('300x400')
 
 frame = Frame(window)
 hostLabel = Label( window, text = 'Hostname or IP: ')
@@ -79,7 +79,7 @@ shutil.unpack_archive(installfile, directory)
 
 #Install Customer File Package
 shutil.move(customerfile, directory + '/customer/customer.zip')
-p = subprocess.Popen([directory + '/bin/customerInstaller.bat'], stdout=subprocess.PIPE, stdin=subprocess.PIPE, shell=True, universal_newlines=True)
+p = subprocess.Popen([directory + '/bin/customerInstaller.bat'], stdout=subprocess.PIPE, shell=True, universal_newlines=True)
 while True:
     try:
         line = p.stdout.readline()
@@ -88,16 +88,19 @@ while True:
         continue
     print(line)
     if "- Ready to (I)nstall the above changes?" in line:
-        p.stdin.write("I")
-        p.stdin.write('\n')
+        pyautogui.typewrite("I")
+        pyautogui.press('enter')
+        # p.stdin.write("I")
+        # p.stdin.write('\n')
     if "INSTALLATION COMPLETED SUCCESSFULLY" in line:
-        subprocess.Popen.kill(p)
+        break
+
+subprocess.Popen.kill(p)
 
 #Run Installer
 p = subprocess.Popen([directory + '/bin/installer.bat'], stdout=subprocess.PIPE, shell=True, universal_newlines=True)
 while True:
     try:
-
         line = p.stdout.readline()
     except Exception as e:
         logging.error(traceback.format_exc())
@@ -162,9 +165,10 @@ while True:
         pyautogui.press('enter')
     elif "Ready to (I)nstall the above" in line:
         pyautogui.typewrite("I")
-
         pyautogui.press('enter')
     elif "INSTALLATION COMPLETED SUCCESSFULLY" in line:
-        subprocess.Popen.kill(p)
+        break
 
-    quit()
+subprocess.Popen.kill(p)I
+
+quit()
