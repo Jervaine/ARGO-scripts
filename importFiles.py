@@ -3,7 +3,8 @@ import shutil
 import os
 import webbrowser
 import threading
-import time
+from datetime import date
+
 import PySimpleGUI as sg
 import win32serviceutil
 
@@ -14,8 +15,34 @@ def extract_file_package(directory, install_zip):
         zip_ref.extractall(directory)
 
 
-def move_files(directory, files_zip):
-    shutil.move(files_zip, (directory + ""))
+def move_files(directory, files):
+    shutil.move(files, (directory + ""))
+
+
+def restart_services():
+    service_name = "ArgoFraudComplianceService"
+    win32serviceutil.RestartService(service_name)
+    # win32serviceutil.RestartService("ArgoFraudComplianceService")
+
+    # search through fcs-webservice.log until "SYSTEM READY"
+
+
+def read_files(directory):
+    file = open(directory + "/logs/fcs-webservice/fcs-webservice-" + date.today() + "-0")
+    word = "SYSTEM READY"
+
+    index = 0
+    flag = 0
+    while flag < 2:
+        for line in file:
+            index += 1
+
+            if word in line:
+                flag += 1
+
+        index = 0
+
+    # exit function and ??? change screen to show diff page
 
 
 # Layout Pages
@@ -30,12 +57,25 @@ folder_select_page = [[sg.Text('Select Folder', font=('Arial', 18), size=(40, 2)
                       [sg.Text('', size=(18, 1))],
                       [sg.Button('Continue', key="fs_continue")]]
 
-run_customer_installer_page = [[sg.Text('Run Customer Installer', font=('Arial', 18), size=(40, 2))],
-                               [sg.Text('Press continue to run the customer installer script', size=(40, 3))],
-                               [sg.Button('Continue', key="rci_continue")]]
+OASIS_folder_select_page = [[sg.Text('Select Folder', font=('Arial', 18), size=(40, 2))],
+                            [sg.Text('Select the folder containing OASIS build', size=(40, 3))],
+                            [sg.Text('Folder'), sg.In(size=(25, 1), enable_events=True, key='-FOLDER-'),
+                             sg.FolderBrowse()],
+                            [sg.Text('', size=(18, 1))],
+                            [sg.Button('Continue', key="OASIS_continue")]]
+
+run_restart_OASIS_page = [[sg.Text('Restarting OASIS', font=('Arial', 18), size=(40, 2))],
+                          [sg.Text('Press continue to restart OASIS', size=(40, 3))],
+                          [sg.Button('Continue', key="sr_continue")]]
+
+import_files_page = [[sg.Text('Import files', font=('Arial', 18), size=(40, 2))],
+                     [sg.Text('Press continue to run the import files script', size=(40, 3))],
+                     [sg.Button('Continue', key="rif_continue")]]
 
 layout = [[sg.Column(welcome_page, key='-COL1-'), sg.Column(folder_select_page, visible=False, key='-COL2-'),
-           sg.Column(run_customer_installer_page, visible=False, key='-COL3-')]]
+           sg.Column(OASIS_folder_select_page, visible=False, key='-COL3-'),
+           sg.Column(run_restart_OASIS_page, visible=False, key='-COL4-'),
+           sg.Column(import_files_page, visible=False, key='-COL5-')]]
 
 # Start GUI
 window = sg.Window('Oasis Import Files', layout, resizable=True, )
@@ -70,24 +110,14 @@ while True:
         values.clear()
         window[f'-COL3-'].update(visible=False)
         window[f'-COL4-'].update(visible=True)
-    if event == 'rci_continue':
-        threading.Thread(target=run_customer_installer, args=(windows_username, windows_password, folder_location),
-                         daemon=True).start()
+    if event == 'sr_continue':
+        restart_services()
+        # threading.Thread(target=run_customer_installer, args=(windows_username, windows_password, folder_location),
+        #                 daemon=True).start()
     if event == '-CI THREAD DONE-':
         window[f'-COL4-'].update(visible=False)
         window[f'-COL5-'].update(visible=True)
-    if event == 'gii_continue':
-        host_name = values[2]
-        db_username = values[3]
-        db_password = values[4]
-        logical_db_name = values[5]
-        window[f'-COL5-'].update(visible=False)
-        window[f'-COL6-'].update(visible=True)
-    if event == 'ri_continue':
-        threading.Thread(target=run_installer, args=(
-            host_name, db_username, db_password, logical_db_name, windows_username, windows_password, folder_location,
-            event_obj),
-                         daemon=True).start()
+
     if event == '-I THREAD DONE-':
         break
 
@@ -109,9 +139,7 @@ os.remove(path)
 shutil.move(path_to_xml_file, directory_to_move_to)
 
 # Restart ARGO Fraud Services
-serviceName = "ArgoFraudComplianceService"
-# win32serviceutil.StartService(serviceName)
-# win32serviceutil.RestartService("ArgoFraudComplianceService")
+
 
 # Run CIF import
 webbrowser.open_new('http://localhost:8084/fcs-webservice/jolokia/exec/com.argodata.fraud:name=cifImportJmxService,'
@@ -145,5 +173,3 @@ for f in allfiles:
 allfiles = os.listdir(path_to_cash_letter_import_files_2)
 for f in allfiles:
     shutil.move(path_to_cash_letter_import_files_2 + "\\" + f, cash_letter_directory_to_move_to + "\\" + f)
-
-
