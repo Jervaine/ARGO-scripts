@@ -94,6 +94,8 @@ directory = fd.askdirectory()
 # subprocess.Popen.kill(p)
 
 #Run Installer
+
+#Strings that the script will search the log file for.
 strings = [
     "What kind of installation is this",                    #1          -0
     "Select the type for database",                         #1          -1
@@ -120,6 +122,8 @@ strings = [
     "Ready to (I)nstall the above changes",                 #I          -22
     "INSTALLATION COMPLETED SUCCESSFULLY"                   #end        -23
 ]
+
+#this is a non-blocking tail function.
 def follow(file, sleep_sec=.1) -> Iterator[str]:
     line = ''
     while True:
@@ -132,18 +136,20 @@ def follow(file, sleep_sec=.1) -> Iterator[str]:
         elif sleep_sec:
             time.sleep(sleep_sec)
 
+#delete any existing log files for the installer.
 if os.path.isdir(directory + '/logs/installer'):
     for file in os.listdir(directory + '/logs/installer'):
         os.remove(os.path.join(directory + '/logs/installer', file))
-
+#Run the installer.bat script
 p = subprocess.Popen([directory + '/bin/installer.bat'], creationflags=subprocess.CREATE_NEW_CONSOLE)
 time.sleep(5)
 log = None
+#Get path of newly created log file
 for file in os.listdir(directory + '/logs/installer'):
     if 'installer-' in file:
-        print(file)
         log = directory + '/logs/installer/' + file
 
+#Tail the log file and run all against string[x]
 with open(log, 'r') as file:
     x = 0
     for line in follow(file):
