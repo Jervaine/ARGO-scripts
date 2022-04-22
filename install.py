@@ -113,9 +113,9 @@ strings = [
     "Enter the shutdown port for Tomcat",                   #default    -13
     "Enter the port for JMX",                               #default    -14
     "Do you want to require a password to connect to JMX",  #default    -15
-    "Do you want instaaler to try and enable RCSI",         #default    -16
+    "Do you want installer to try and enable RCSI",         #default    -16
     "Do you want to DROP and RECREATE all of the AML",      #y          -17
-    "Are you certain that you want to DROP and RECREATE the", #delete   -18
+    "Are you certain that you want to DROP and RECREATE", #delete   -18
     "Do you want to enable the HOST Web Service",           #default    -19
     "Do you want to enable the OFAC Search Web Service",    #default    -20
     "Do you want to install this as a Windows service",     #default    -21
@@ -184,50 +184,5 @@ with open(log, 'r') as file:
             x += 1
             print(line)
 
-
-
-# p = subprocess.Popen([directory + '/bin/installer.bat'], stdout=subprocess.PIPE, shell=True, universal_newlines=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
-#
-# for x in range(0, 22, 0):
-#     try:
-#         line = p.stdout.readline()
-#     except Exception as e:
-#         logging.error(traceback.format_exc(e))
-#         continue
-#     print(line)
-#
-#     if strings[x] in line:
-#         if x == 0 or x == 1 or x == 5:
-#             pyautogui.typewrite("1")
-#             pyautogui.press('enter')
-#         elif x == 2:
-#             pyautogui.typewrite(host)
-#             pyautogui.press('enter')
-#         elif x == 6:
-#             pyautogui.typewrite(username)
-#             pyautogui.press('enter')
-#         elif x == 7:
-#             pyautogui.typewrite(password)
-#             pyautogui.press('enter')
-#         elif x == 8:
-#             pyautogui.typewrite(database)
-#             pyautogui.press('enter')
-#         elif x == 9 or x == 17 or x == 18 or x == 19:
-#             pyautogui.typewrite("n")
-#             pyautogui.press('enter')
-#         elif x == 10 or x == 11 or x == 14:
-#             pyautogui.typewrite("y")
-#             pyautogui.press('enter')
-#         elif x == 16:
-#             pyautogui.typewrite("delete")
-#             pyautogui.press('enter')
-#         elif x == 20:
-#             pyautogui.typewrite("I")
-#             pyautogui.press('enter')
-#         else:
-#             pyautogui.press('enter')
-#         x = x + 1
-#
-# subprocess.Popen.kill(p)
-#
-# quit()
+subprocess.Popen.kill(p)
+quit()
