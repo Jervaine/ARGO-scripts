@@ -106,7 +106,7 @@ directory = fd.askdirectory()
 
 #Run Installer
 
-#Strings that the script will search the log file for.
+#Key Phrases
 strings = [
     "What kind of installation is this",                    #1          -0
     "Select the type for database",                         #1          -1
