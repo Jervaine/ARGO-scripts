@@ -25,7 +25,18 @@ def dialog():
     database = databaseEntry.get()
     host = hostEntry.get()
     window.destroy()
-
+#this is a non-blocking tail function.
+def follow(file, sleep_sec=.1) -> Iterator[str]:
+    line = ''
+    while True:
+        tmp = file.readline()
+        if tmp is not None:
+            line += tmp
+            if line.endswith("\n"):
+                yield line
+                line = ''
+        elif sleep_sec:
+            time.sleep(sleep_sec)
 window = Tk()
 window.title('Installation Info')
 window.geometry('400x450')
@@ -115,26 +126,13 @@ strings = [
     "Do you want to require a password to connect to JMX",  #default    -15
     "Do you want installer to try and enable RCSI",         #default    -16
     "Do you want to DROP and RECREATE all of the AML",      #y          -17
-    "Are you certain that you want to DROP and RECREATE", #delete   -18
+    "Are you certain that you want to DROP and RECREATE",   #delete   -18
     "Do you want to enable the HOST Web Service",           #default    -19
     "Do you want to enable the OFAC Search Web Service",    #default    -20
     "Do you want to install this as a Windows service",     #default    -21
     "Ready to (I)nstall the above changes",                 #I          -22
     "INSTALLATION COMPLETED SUCCESSFULLY"                   #end        -23
 ]
-
-#this is a non-blocking tail function.
-def follow(file, sleep_sec=.1) -> Iterator[str]:
-    line = ''
-    while True:
-        tmp = file.readline()
-        if tmp is not None:
-            line += tmp
-            if line.endswith("\n"):
-                yield line
-                line = ''
-        elif sleep_sec:
-            time.sleep(sleep_sec)
 
 #delete any existing log files for the installer.
 if os.path.isdir(directory + '/logs/installer'):
