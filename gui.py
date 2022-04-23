@@ -124,8 +124,9 @@ def run_installer(host_name_, db_username_, db_password_, logical_db_name_, wind
         pyautogui.press('enter')
         pyautogui.press('enter')
         time.sleep(2)
-        window.write_event_value("-I THREAD DONE-", "Done")
+        window.write_event_value("-B THREAD DONE-", "Done")
         ok = windll.user32.BlockInput(False)
+
 
 def run_system_config(directory, windows_username_):
     directory += "./bin/configure.bat"
@@ -149,6 +150,8 @@ def run_system_config(directory, windows_username_):
     pyautogui.typewrite('a')
     pyautogui.press('enter')
     ok = windll.user32.BlockInput(False)
+    window.write_event_value("-S THREAD DONE-", "DONE")
+
 
 def run_bank_config(directory, windows_username_):
     directory += "./bin/configure.bat"
@@ -175,6 +178,7 @@ def run_bank_config(directory, windows_username_):
     pyautogui.typewrite('a')
     pyautogui.press('enter')
     ok = windll.user32.BlockInput(False)
+    window.write_event_value("-CI THREAD DONE-", "DONE")
 
 
 # Layout Pages
@@ -212,21 +216,27 @@ run_installer_page = [[sg.Text('Run Installer', font=('Arial', 18), size=(40, 2)
                       [sg.Text('Press continue to run the installer script', size=(40, 3))],
                       [sg.Button('Continue', key="ri_continue")]]
 
-warning_page = [[sg.Text('Warning!', font=('Arial', 18), size=(40, 2))],
+warning_page = [[sg.Text('Warning!', font=('Arial', 18), sirize=(40, 2))],
                 [sg.Text('Are you sure you want to drop and recreate database?', size=(40, 3))],
                 [sg.Button('Yes', key="wap_yes")],
                 [sg.Button('No', key="wap_no")]]
 
-run_bank_config = []
+run_bank_config_page = [[sg.Text('Run Installer', font=('Arial', 18), size=(40, 2))],
+                   [sg.Text('Press continue to run the bank installer script', size=(40, 3))],
+                   [sg.Button('Continue', key="bank_continue")]]
 
-run_system_config = []
+run_system_config_page = [[sg.Text('Run Installer', font=('Arial', 18), size=(40, 2))],
+                     [sg.Text('Press continue to run the system installer script', size=(40, 3))],
+                     [sg.Button('Continue', key="sys_continue")]]
 
 layout = [[sg.Column(welcome_page, key='-COL1-'), sg.Column(folder_select_page, visible=False, key='-COL2-'),
            sg.Column(get_credentials_page, visible=False, key='-COL3-'),
            sg.Column(run_customer_installer_page, visible=False, key='-COL4-'),
            sg.Column(get_info_installer, visible=False, key='-COL5-'),
            sg.Column(run_installer_page, visible=False, key='-COL6-'),
-           sg.Column(warning_page, visible=False, key='-COL7-')]]
+           sg.Column(warning_page, visible=False, key='-COL7-'),
+           sg.Column(run_bank_config_page, visible=False, key='-COL8-'),
+           sg.Column(run_system_config_page, visible=False, key='-COL9-')]]
 
 # Start GUI
 window = sg.Window('Oasis Build Installer', layout, resizable=True)
@@ -237,6 +247,8 @@ path_to_customer_zip_file = ""
 customer_folder_location = ""
 windows_username = ""
 windows_password = ""
+sys_location = ""
+bank_location = ""
 host_name = ""
 db_username = ""
 db_password = ""
@@ -292,6 +304,20 @@ while True:
         else:
             break
     if event == '-I THREAD DONE-':
+        window[f'COL-6'].update(visible=False)
+        window[f'COL-8'].update(visible=True)
+    if event == 'sys_continue':
+        threading.Thread(target=run_bank_config, args=(
+            sys_location, windows_username),
+                         daemon=True).start()
+    if event == '-S THREAD DONE':
+        window[f'COL-8'].update(visible=False)
+        window[f'COL-9'].update(visible=True)
+    if event == 'bank_continue':
+        threading.Thread(target=run_system_config, args=(
+            bank_location, windows_username),
+                         daemon=True).start()
+    if event == '-B THREAD DONE':
         break
 
 window.close()
