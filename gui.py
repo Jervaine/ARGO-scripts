@@ -6,20 +6,31 @@ import pyautogui
 import time
 import threading
 from ctypes import *
-import pytesseract
-import cv2
-
-pytesseract.pytesseract.tesseract_cmd = 'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
+import os
+from typing import Iterator
 
 
 # Functions
+#non-blocking tail
+def follow(file, sleep_sec=.1) -> Iterator[str]:
+    line = ''
+    while True:
+        tmp = file.readline()
+        if tmp is not None:
+            line += tmp
+            if line.endswith("\n"):
+                yield line
+                line = ''
+        elif sleep_sec:
+            time.sleep(sleep_sec)
+
 def extract_install_package(directory, install_zip):
     with zipfile.ZipFile(install_zip, 'r') as zip_ref:
         zip_ref.extractall(directory)
 
 
 def move_customer_package(directory, customer_zip):
-    shutil.move(customer_zip, (directory + "/customer/argo-customer-fraud-argo-4.2.7.0-package (5).zip"))
+    shutil.move(customer_zip, (directory + "/customer/customer.zip"))
 
 
 def run_customer_installer(windows_username_, windows_password_, directory):
@@ -44,91 +55,114 @@ def run_customer_installer(windows_username_, windows_password_, directory):
 
 def run_installer(host_name_, db_username_, db_password_, logical_db_name_, windows_username_, windows_password_,
                   directory, event_obj):
-    directory += "/bin/installer.bat"
+    #Key Phrases
+    strings = [
+        "What kind of installation is this",
+        "Select the type for database",
+        "Enter hostname or IP address",
+        "How do you want to connect",
+        "Enter the port for database",
+        "How do you want to authenticate",
+        "Enter the username for database",
+        "Enter the password for database",
+        "Enter the logical database name",
+        "Would you like to customize the JDBC URL",
+        "Would you like to test these connection settings",
+        "Do you want to use encrypted database credentials",
+        "Enter the HTTP port for Tomcat",
+        "Enter the shutdown port for Tomcat",
+        "Enter the port for JMX",
+        "Do you want to require a password to connect to JMX",
+        "Do you want the installer to try and enable RCSI",
+        "Do you want to DROP and RECREATE all of the AML",
+        "Are you certain that you want to DROP and RECREATE",
+        "Do you want to enable the HOST Web Service",
+        "Do you want to enable the OFAC Search Web Service",
+        "Do you want to install this as a Windows service",
+        "Ready to (I)nstall the above changes",
+        "INSTALLATION COMPLETED"
+    ]
+    #Delete any existing log files for the installer.
+    if os.path.isdir(directory + '/logs/installer'):
+        for file in os.listdir(directory + '/logs/installer'):
+            os.remove(os.path.join(directory + '/logs/installer', file))
+
+    #Run Installer Script
     p = subprocess.Popen(['runas', '/profile', '/user:' + windows_username_,
-                          directory],
+                          directory + '/bin/installer.bat'],
                          creationflags=subprocess.CREATE_NEW_CONSOLE)
     ok = windll.user32.BlockInput(True)
     time.sleep(5)
     pyautogui.typewrite(windows_password_)
     pyautogui.press('enter')
     time.sleep(5)
-    pyautogui.typewrite("1")
-    pyautogui.press('enter')
-    time.sleep(1)
-    pyautogui.typewrite("1")
-    pyautogui.press('enter')
-    time.sleep(1)
-    pyautogui.typewrite(host_name_)
-    pyautogui.press('enter')
-    time.sleep(1)
-    pyautogui.press('enter')
-    time.sleep(1)
-    pyautogui.press('enter')
-    time.sleep(1)
-    pyautogui.press('enter')
-    time.sleep(1)
-    pyautogui.typewrite(db_username_)
-    pyautogui.press('enter')
-    time.sleep(1)
-    pyautogui.typewrite(db_password_)
-    pyautogui.press('enter')
-    time.sleep(1)
-    pyautogui.typewrite(logical_db_name_)
-    pyautogui.press('enter')
-    time.sleep(1)
-    pyautogui.press('enter')
-    time.sleep(1)
-    pyautogui.press('enter')
-    time.sleep(1)
-    pyautogui.press('enter')
-    time.sleep(1)
-    pyautogui.press('enter')
-    time.sleep(1)
-    pyautogui.press('enter')
-    time.sleep(1)
-    pyautogui.press('enter')
-    time.sleep(1)
-    pyautogui.press('enter')
-    time.sleep(1)
-    pyautogui.press('enter')
-    ok = windll.user32.BlockInput(False)
-    window.write_event_value("-WARNING-", "warning")
-    flag = event_obj.wait()
-    if flag:
-        ok = windll.user32.BlockInput(True)
-        pyautogui.typewrite('y')
-        pyautogui.press('enter')
-        time.sleep(1)
-        pyautogui.typewrite('delete')
-        pyautogui.press('enter')
-        time.sleep(1)
-        pyautogui.press('enter')
-        time.sleep(1)
-        pyautogui.press('enter')
-        time.sleep(1)
-        pyautogui.press('enter')
-        time.sleep(3)
-        pyautogui.typewrite('I')
-        pyautogui.press('enter')
-        while True:
-            time.sleep(10)
-            myScreenshot = pyautogui.screenshot()
-            myScreenshot.save(r'C:\Users\ewanf\PycharmProjects\ARGO-scripts\installerScreenshot.png')
-            img = cv2.imread('test2.jpg')
-            img = cv2.resize(img, (600, 360))
-            if 'INSTALLATION COMPLETED' in pytesseract.image_to_string(img):
-                break
 
-        time.sleep(5)
-        pyautogui.press('enter')
-        pyautogui.press('enter')
-        time.sleep(2)
-        window.write_event_value("-B THREAD DONE-", "Done")
-        ok = windll.user32.BlockInput(False)
+    #Get path of log file
+    log = None
+    for file in os.listdir(directory + '/logs/installer'):
+        if 'installer-' in file:
+            log = directory + '/logs/installer/' + file
+
+    # Tail the log file and run all against string[x]
+    with open(log, 'r') as file:
+        x = 0
+        for line in follow(file):
+            if strings[x] in line:
+                time.sleep(.2)
+                if x == 0 or x == 1 or x == 3 or x == 5:
+                    pyautogui.typewrite("1")
+                    pyautogui.press('enter')
+                elif x == 2:
+                    pyautogui.typewrite(host_name_)
+                    pyautogui.press('enter')
+                elif x == 6:
+                    pyautogui.typewrite(db_username_)
+                    pyautogui.press('enter')
+                elif x == 7:
+                    pyautogui.typewrite(db_password_)
+                    pyautogui.press('enter')
+                elif x == 8:
+                    pyautogui.typewrite(logical_db_name_)
+                    pyautogui.press('enter')
+                elif x == 17:
+                    ok = windll.user32.BlockInput(False)
+                    window.write_event_value("-WARNING-", "warning")
+                    flag = event_obj.wait()
+                    if flag:
+                        ok = windll.user32.BlockInput(True)
+                        pyautogui.typewrite("y")
+                        pyautogui.press('enter')
+                    else:
+                        x += 30
+                elif x == 18:
+                    pyautogui.typewrite("delete")
+                    pyautogui.press('enter')
+                elif x == 22:
+                    pyautogui.typewrite("I")
+                    pyautogui.press('enter')
+                elif x == 23:
+                    pyautogui.press('enter')
+                    time.sleep(1)
+                    pyautogui.press('enter')
+                    break
+                else:
+                    pyautogui.press('enter')
+                x += 1
+                if x > 30:
+                    quit()
+    window.write_event_value("-B THREAD DONE-", "Done")
+    ok = windll.user32.BlockInput(False)
 
 
 def run_system_config(directory, windows_username_):
+    strings = [
+        "Select configuration process",             #2
+        "Have you stopped the Argo Fraud service",  #y
+        "Have you backed up your database",         #y
+        "Ready to (I)nstall the above changes",     #I
+        "INSTALLATION COMPLETED SUCCESSFULLY"       #enter
+    ]
+
     directory += "./bin/configure.bat"
     p = subprocess.Popen(['runas', '/profile', '/user:' + windows_username_,
                           directory],
@@ -154,6 +188,14 @@ def run_system_config(directory, windows_username_):
 
 
 def run_bank_config(directory, windows_username_):
+    strings = [
+        "Select configuration process",             #1
+        "Have you stopped the Argo Fraud service",  #y
+        "Have you backed up your database",         #y
+        "What is the bank name",                    #bank
+        "Ready to (I)nstall the above changes",     #I
+        "INSTALLATION COMPLETED SUCCESSFULLY"       #enter
+    ]
     directory += "./bin/configure.bat"
     p = subprocess.Popen(['runas', '/profile', '/user:' + windows_username_,
                           directory],
@@ -172,7 +214,7 @@ def run_bank_config(directory, windows_username_):
     pyautogui.typewrite('argo')
     pyautogui.press('enter')
     time.sleep(1)
-    pyautogui.typewrite('1')
+    pyautogui.typewrite('I')
     pyautogui.press('enter')
     time.sleep(1)
     pyautogui.typewrite('a')
@@ -216,7 +258,7 @@ run_installer_page = [[sg.Text('Run Installer', font=('Arial', 18), size=(40, 2)
                       [sg.Text('Press continue to run the installer script', size=(40, 3))],
                       [sg.Button('Continue', key="ri_continue")]]
 
-warning_page = [[sg.Text('Warning!', font=('Arial', 18), sirize=(40, 2))],
+warning_page = [[sg.Text('Warning!', font=('Arial', 18), size=(40, 2))],
                 [sg.Text('Are you sure you want to drop and recreate database?', size=(40, 3))],
                 [sg.Button('Yes', key="wap_yes")],
                 [sg.Button('No', key="wap_no")]]
@@ -271,8 +313,11 @@ while True:
             window[f'-COL3-'].update(visible=True)
     if event == '-FOLDER-':
         folder_location = values['-FOLDER-']
-        path_to_install_zip_file = folder_location + "/argo-fraud-4.2.7.0-install-package (4).zip"
-        path_to_customer_zip_file = folder_location + "/argo-customer-fraud-argo-4.2.7.0-package (5).zip"
+        for file in os.listdir(folder_location):
+            if 'install' in file:
+                path_to_install_zip_file = folder_location + '/' + file
+            if 'customer' in file:
+                path_to_customer_zip_file = folder_location + '/' + file
     if event == 'gc_continue':
         windows_username = values[0]
         windows_password = values[1]
@@ -317,7 +362,8 @@ while True:
         threading.Thread(target=run_system_config, args=(
             bank_location, windows_username),
                          daemon=True).start()
-    if event == '-B THREAD DONE':
+    if event == '-B THREAD DONE-':
         break
 
 window.close()
+quit()
