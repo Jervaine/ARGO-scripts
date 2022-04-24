@@ -50,6 +50,8 @@ def run_cif_import():
                     "=cifImportJmxServicetype=CifImportJmxService/runCifImportNow/1", cif_username, cif_password)
     br.open("http://localhost:8080/fcs-webservice/jolokia/exec/com.argodata.fraud:name=cifImportJmxServicetype"
             "=CifImportJmxService/runCifImportNow/1")
+
+    # browser call using old. it works but it doesnt take a username and password for URL..
     #webbrowser.open_new('http://localhost:8080/fcs-webservice/jolokia/exec/com.argodata.fraud:name=cifImportJmxService,'
                         #'type=CifImportJmxService/runCifImportNow/1')
 
