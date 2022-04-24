@@ -155,6 +155,14 @@ def run_installer(host_name_, db_username_, db_password_, logical_db_name_, wind
 
 
 def run_system_config(directory, windows_username_):
+    strings = [
+        "Select configuration process",             #2
+        "Have you stopped the Argo Fraud service",  #y
+        "Have you backed up your database",         #y
+        "Ready to (I)nstall the above changes",     #I
+        "INSTALLATION COMPLETED SUCCESSFULLY"       #enter
+    ]
+
     directory += "./bin/configure.bat"
     p = subprocess.Popen(['runas', '/profile', '/user:' + windows_username_,
                           directory],
@@ -180,6 +188,14 @@ def run_system_config(directory, windows_username_):
 
 
 def run_bank_config(directory, windows_username_):
+    strings = [
+        "Select configuration process",             #1
+        "Have you stopped the Argo Fraud service",  #y
+        "Have you backed up your database",         #y
+        "What is the bank name",                    #bank
+        "Ready to (I)nstall the above changes",     #I
+        "INSTALLATION COMPLETED SUCCESSFULLY"       #enter
+    ]
     directory += "./bin/configure.bat"
     p = subprocess.Popen(['runas', '/profile', '/user:' + windows_username_,
                           directory],
@@ -198,7 +214,7 @@ def run_bank_config(directory, windows_username_):
     pyautogui.typewrite('argo')
     pyautogui.press('enter')
     time.sleep(1)
-    pyautogui.typewrite('1')
+    pyautogui.typewrite('I')
     pyautogui.press('enter')
     time.sleep(1)
     pyautogui.typewrite('a')
