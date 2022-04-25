@@ -16,14 +16,6 @@ def run_cif_import():
             "=CifImportJmxService/runCifImportNow/1")
     logging.info("CIF Import COMPLETED")
 
-def argo_ready(log):
-    with open(log, 'r') as file:
-        x = 0
-        for line in func.follow(file):
-            if 'SYSTEM READY' in line:
-                logging.info("SYSTEM READY")
-                break
-
 # Layout Pages
 sg.theme("SystemDefaultForReal")
 welcome_page = [[sg.Text('Oasis Import Files', font=('Arial', 18), size=(40, 2))],
@@ -137,16 +129,11 @@ while True:
             func.move_file(path_to_cif_folder + '/' + file, OASIS_folder_location + '/data/cif-load')
 
         #Wait until log files are generated
-        print("Waiting for log files to be generated")
-        while True:
-            if os.path.isdir(OASIS_folder_location + '/logs/fcs-webservice'):
-                print("Log file generated")
-                break
-            time.sleep(2)
+        func.wait_for_dir(OASIS_folder_location + '/logs/fcs-webservice')
         #Load log file
         log = func.load_log(OASIS_folder_location + '/logs/fcs-webservice', 'webservice-')
         #Search Log file for "SYSTEM READY"
-        argo_ready(log)
+        func.argo_ready(log)
         run_cif_import()
         window[f'-COL5-'].update(visible=False)
         window[f'-COL6-'].update(visible=True)
