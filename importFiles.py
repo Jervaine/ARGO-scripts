@@ -7,12 +7,13 @@ import time
 from typing import Iterator
 import PySimpleGUI as sg
 import win32service
-import win32serviceutil #pip install pywin32
-import mechanize #pip install mechanize
+import win32serviceutil  # pip install pywin32
+import mechanize  # pip install mechanize
+
 
 # Functions
 
-#non-blocking tail
+# non-blocking tail
 def follow(file, sleep_sec=.1) -> Iterator[str]:
     line = ''
     while True:
@@ -24,6 +25,7 @@ def follow(file, sleep_sec=.1) -> Iterator[str]:
                 line = ''
         elif sleep_sec:
             time.sleep(sleep_sec)
+
 
 def extract_file_package(directory, install_zip):
     with zipfile.ZipFile(install_zip, 'r') as zip_ref:
@@ -41,16 +43,6 @@ def replace_file(directory, files):
     path = os.path.join(directory, file)
     os.remove(path)
     shutil.move(files, directory)
-
-
-def change_file(directory, files):
-    file = 'argoAifConfig.xml'
-    path_to_xml_file = "C:\\Users\\Nebula\\Desktop\\On_US_DATA\\ON_US_import-landing-zones\\argoAifConfig" \
-                       ".xml "
-    directory_to_move_to = "C:\\Users\\Nebula\\Desktop\\CLEAN_OASIS\\etc\\import-landing-zones\\examples"
-    path = os.path.join(directory_to_move_to, file)
-    os.remove(path)
-    shutil.move(path_to_xml_file, directory_to_move_to)
 
 
 def restart_services():
@@ -74,34 +66,22 @@ def run_cif_import():
     br = mechanize.Browser()
     br.add_password("http://localhost:8080/fcs-webservice/jolokia/exec/com.argodata.fraud:name"
                     "=cifImportJmxService,type=CifImportJmxService/runCifImportNow/1", cif_username, cif_password)
-    response = br.open("http://localhost:8080/fcs-webservice/jolokia/exec/com.argodata.fraud:name=cifImportJmxService,type"
-            "=CifImportJmxService/runCifImportNow/1")
+    response = br.open(
+        "http://localhost:8080/fcs-webservice/jolokia/exec/com.argodata.fraud:name=cifImportJmxService,type"
+        "=CifImportJmxService/runCifImportNow/1")
     print(response)
 
-    # browser call using old. it works but it doesnt take a username and password for URL..
-    #webbrowser.open_new('http://localhost:8080/fcs-webservice/jolokia/exec/com.argodata.fraud:name=cifImportJmxService,'
-                        #'type=CifImportJmxService/runCifImportNow/1')
 
-
-def read_fcs_file(directory):
-    str_date = date.today()
-    line = directory + "/logs/fcs-webservice/fcs-webservice-" + str_date + "-0"
-    file1 = open(line)
-    word = "SYSTEM READY"
-    # start_time = time.time()
-    index = 0
+def read_cif_folder(files):
+    allfiles = os.listdir(files)
+    amount = len(allfiles)
+    amount -= 1
     flag = 0
-    while flag < 2:
-        for line in file1:
-            index += 1
-
-            if word in line:
-                flag += 1
-
-        index = 0
-        # if time.time() + > start_time
-
-    # exit function and ??? change screen to show diff page
+    for f in allfiles:
+        if f.endswith('.done'):
+            flag += 1
+    if amount != flag:
+        print("ERROR with CIF import")
 
 
 # Layout Pages
@@ -134,15 +114,19 @@ run_restart_OASIS_page = [[sg.Text('Restarting OASIS', font=('Arial', 18), size=
                           [sg.Text('Press continue to restart OASIS', size=(40, 3))],
                           [sg.Button('Continue', key="sr_continue")]]
 
-completed_files_page = [[sg.Text('Import files', font=('Arial', 18), size=(40, 2))],
-                        [sg.Text('Press continue to run the import files script', size=(40, 3))],
-                        [sg.Button('Continue', key="rif_continue")]]
+run_files_page = [[sg.Text('Import files', font=('Arial', 18), size=(40, 2))],
+                  [sg.Text('Press continue to run the import files script', size=(40, 3))],
+                  [sg.Button('Continue', key="rif_continue")]]
+
+end_files_page = [[sg.Text('Import files complete', font=('Arial', 18), size=(40, 2))],
+                  [sg.Text('File import completed, click End to complete process', size=(40, 3))],
+                  [sg.Button('End', key="rif_continue")]]
 
 layout = [[sg.Column(welcome_page, key='-COL1-'), sg.Column(OASIS_folder_select_page, visible=False, key='-COL2-'),
            sg.Column(folder_select_page, visible=False, key='-COL3-'),
            sg.Column(get_credentials_page, visible=False, key='-COL4-'),
            sg.Column(run_restart_OASIS_page, visible=False, key='-COL5-'),
-           sg.Column(completed_files_page, visible=False, key='-COL6-')]]
+           sg.Column(run_files_page, visible=False, key='-COL6-')]]
 
 # Start GUI
 window = sg.Window('Oasis Import Files', layout, resizable=True, )
@@ -210,19 +194,19 @@ while True:
         restart_services()
         # read_fcs_file(OASIS_folder_location)
         move_files(OASIS_folder_location + "/data/cif-load", path_to_cif_folder)
-        #Wait until log files are generated
+        # Wait until log files are generated
         print("Waiting for log files to be generated")
         while True:
             if os.path.isdir(OASIS_folder_location + '/logs/fcs-webservice'):
                 print("Log file generated")
                 break
             time.sleep(2)
-        #Load log file
+        # Load log file
         log = None
         for file in os.listdir(OASIS_folder_location + '/logs/fcs-webservice'):
             if 'webservice-' in file:
                 log = OASIS_folder_location + '/logs/fcs-webservice/' + file
-        #Search Log file for "SYSTEM READY"
+        # Search Log file for "SYSTEM READY"
         print("Waiting for SYSTEM READY")
         with open(log, 'r') as file:
             x = 0
@@ -241,7 +225,13 @@ while True:
         move_files(OASIS_folder_location + "/data/cash-letter-import", path_to_ref_folder)
         move_files(OASIS_folder_location + "/data/cash-letter-import", path_to_sus_folder)
 
-    if event == '-I THREAD DONE-':
+        # check for .done, and empty import folders to show completion
+        read_cif_folder(OASIS_folder_location + "/data/cif-load")
+
+        window[f'-COL5-'].update(visible=False)
+        window[f'-COL6-'].update(visible=True)
+
+    if event == 'import_done':
         break
 
 window.close()
