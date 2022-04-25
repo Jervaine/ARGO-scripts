@@ -1,108 +1,28 @@
-import zipfile
-import shutil
 import os
 import threading
-from datetime import date
 import time
-from typing import Iterator
 import PySimpleGUI as sg
-import win32service
-import win32serviceutil #pip install pywin32
-import mechanize #pip install mechanize
+import mechanize
+import functions as func
+import logging
 
 # Functions
-
-#non-blocking tail
-def follow(file, sleep_sec=.1) -> Iterator[str]:
-    line = ''
-    while True:
-        tmp = file.readline()
-        if tmp is not None:
-            line += tmp
-            if line.endswith("\n"):
-                yield line
-                line = ''
-        elif sleep_sec:
-            time.sleep(sleep_sec)
-
-def extract_file_package(directory, install_zip):
-    with zipfile.ZipFile(install_zip, 'r') as zip_ref:
-        zip_ref.extractall(directory)
-
-
-def move_files(directory, files):
-    allfiles = os.listdir(files)
-    for f in allfiles:
-        shutil.move(files + "\\" + f, directory + "\\" + f)
-
-
-def replace_file(directory, files):
-    file = 'argoAifConfig.xml'
-    path = os.path.join(directory, file)
-    os.remove(path)
-    shutil.move(files, directory)
-
-
-def change_file(directory, files):
-    file = 'argoAifConfig.xml'
-    path_to_xml_file = "C:\\Users\\Nebula\\Desktop\\On_US_DATA\\ON_US_import-landing-zones\\argoAifConfig" \
-                       ".xml "
-    directory_to_move_to = "C:\\Users\\Nebula\\Desktop\\CLEAN_OASIS\\etc\\import-landing-zones\\examples"
-    path = os.path.join(directory_to_move_to, file)
-    os.remove(path)
-    shutil.move(path_to_xml_file, directory_to_move_to)
-
-
-def restart_services():
-    service_name = "ArgoFraudComplianceService"
-    if win32serviceutil.QueryServiceStatus(service_name)[1] == win32service.SERVICE_RUNNING:
-        print("Stopping ArgoFraudComplianceService")
-        win32serviceutil.StopService(service_name)
-    print("ArgoFraudComplianceService Stopped")
-    while win32serviceutil.QueryServiceStatus(service_name)[1] == win32service.SERVICE_RUNNING:
-        time.sleep(1)
-    time.sleep(2)
-    if os.path.isdir(OASIS_folder_location + '/logs/fcs-webservice'):
-        print("Removing Old Log Files")
-        shutil.rmtree(OASIS_folder_location + '/logs/fcs-webservice')
-    print("Starting ArgoFraudComplianceService")
-    win32serviceutil.StartService(service_name)
-
-
 def run_cif_import():
-    print("Run CIF Import")
+    logging.info("Running CIF Import")
     br = mechanize.Browser()
     br.add_password("http://localhost:8080/fcs-webservice/jolokia/exec/com.argodata.fraud:name"
                     "=cifImportJmxService,type=CifImportJmxService/runCifImportNow/1", cif_username, cif_password)
-    response = br.open("http://localhost:8080/fcs-webservice/jolokia/exec/com.argodata.fraud:name=cifImportJmxService,type"
+    br.open("http://localhost:8080/fcs-webservice/jolokia/exec/com.argodata.fraud:name=cifImportJmxService,type"
             "=CifImportJmxService/runCifImportNow/1")
-    print(response)
+    logging.info("CIF Import COMPLETED")
 
-    # browser call using old. it works but it doesnt take a username and password for URL..
-    #webbrowser.open_new('http://localhost:8080/fcs-webservice/jolokia/exec/com.argodata.fraud:name=cifImportJmxService,'
-                        #'type=CifImportJmxService/runCifImportNow/1')
-
-
-def read_fcs_file(directory):
-    str_date = date.today()
-    line = directory + "/logs/fcs-webservice/fcs-webservice-" + str_date + "-0"
-    file1 = open(line)
-    word = "SYSTEM READY"
-    # start_time = time.time()
-    index = 0
-    flag = 0
-    while flag < 2:
-        for line in file1:
-            index += 1
-
-            if word in line:
-                flag += 1
-
-        index = 0
-        # if time.time() + > start_time
-
-    # exit function and ??? change screen to show diff page
-
+def argo_ready(log):
+    with open(log, 'r') as file:
+        x = 0
+        for line in func.follow(file):
+            if 'SYSTEM READY' in line:
+                logging.info("SYSTEM READY")
+                break
 
 # Layout Pages
 sg.theme("SystemDefaultForReal")
@@ -186,8 +106,9 @@ while True:
             sg.Print('No folder selected')
         else:
             print("Extracting Data file")
-            extract_file_package(import_folder_location, import_folder_location + "/On_US_DATA_UTD.zip")
-            replace_file(path_to_etc, path_to_config_file)
+            func.extract_zip(import_folder_location, import_folder_location + "/On_US_DATA_UTD.zip")
+            func.delete_file(os.path.join(path_to_etc, 'argoAifConfig.xml'))
+            func.move_file(path_to_config_file, path_to_etc)
             window[f'-COL3-'].update(visible=False)
             window[f'-COL4-'].update(visible=True)
 
@@ -207,9 +128,14 @@ while True:
         window[f'-COL5-'].update(visible=True)
 
     if event == 'sr_continue':
-        restart_services()
-        # read_fcs_file(OASIS_folder_location)
-        move_files(OASIS_folder_location + "/data/cif-load", path_to_cif_folder)
+        service = "ArgoFraudComplianceService"
+        func.stop_service(service)
+        func.delete_dir(OASIS_folder_location + '/logs/fcs-webservice')
+        func.start_service(service)
+
+        for file in os.listdir(path_to_cif_folder):
+            func.move_file(path_to_cif_folder + '/' + file, OASIS_folder_location + '/data/cif-load')
+
         #Wait until log files are generated
         print("Waiting for log files to be generated")
         while True:
@@ -218,28 +144,21 @@ while True:
                 break
             time.sleep(2)
         #Load log file
-        log = None
-        for file in os.listdir(OASIS_folder_location + '/logs/fcs-webservice'):
-            if 'webservice-' in file:
-                log = OASIS_folder_location + '/logs/fcs-webservice/' + file
+        log = func.load_log(OASIS_folder_location + '/logs/fcs-webservice', 'webservice-')
         #Search Log file for "SYSTEM READY"
-        print("Waiting for SYSTEM READY")
-        with open(log, 'r') as file:
-            x = 0
-            for line in follow(file):
-                if 'SYSTEM READY' in line:
-                    print("SYSTEM READY")
-                    break
-
+        argo_ready(log)
         run_cif_import()
         window[f'-COL5-'].update(visible=False)
         window[f'-COL6-'].update(visible=True)
 
     if event == 'rif_continue':
         # call imports
-        move_files(OASIS_folder_location + "/data/aif-load", path_to_aif_folder)
-        move_files(OASIS_folder_location + "/data/cash-letter-import", path_to_ref_folder)
-        move_files(OASIS_folder_location + "/data/cash-letter-import", path_to_sus_folder)
+        for file in os.listdir(path_to_aif_folder):
+            func.move_file(path_to_aif_folder + '/' + file, OASIS_folder_location + '/data/aif-load')
+        for file in os.listdir(path_to_ref_folder):
+            func.move_file(path_to_ref_folder + '/' + file, OASIS_folder_location + '/data/cash-letter-import')
+        for file in os.listdir(path_to_sus_folder):
+            func.move_file(path_to_sus_folder + '/' + file, OASIS_folder_location + '/data/cash-letter-import')
 
     if event == '-I THREAD DONE-':
         break

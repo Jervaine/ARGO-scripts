@@ -1,38 +1,15 @@
 import PySimpleGUI as sg
-import zipfile
-import shutil
 import subprocess
 import pyautogui
 import time
 import threading
 from ctypes import *
 import os
-from typing import Iterator
+import functions as func
 
+import functions
 
 # Functions
-#non-blocking tail
-def follow(file, sleep_sec=.1) -> Iterator[str]:
-    line = ''
-    while True:
-        tmp = file.readline()
-        if tmp is not None:
-            line += tmp
-            if line.endswith("\n"):
-                yield line
-                line = ''
-        elif sleep_sec:
-            time.sleep(sleep_sec)
-
-def extract_install_package(directory, install_zip):
-    with zipfile.ZipFile(install_zip, 'r') as zip_ref:
-        zip_ref.extractall(directory)
-
-
-def move_customer_package(directory, customer_zip):
-    shutil.move(customer_zip, (directory + "/customer/customer.zip"))
-
-
 def run_customer_installer(windows_username_, windows_password_, directory):
     directory += "/bin/customerInstaller.bat"
     print(directory)
@@ -85,7 +62,7 @@ def run_installer(host_name_, db_username_, db_password_, logical_db_name_, wind
     #Delete any existing log files for the installer.
     if os.path.isdir(directory + '/logs/installer'):
         for file in os.listdir(directory + '/logs/installer'):
-            os.remove(os.path.join(directory + '/logs/installer', file))
+            func.delete_file(os.path.join(directory + '/logs/installer', file))
 
     #Run Installer Script
     p = subprocess.Popen(['runas', '/profile', '/user:' + windows_username_,
@@ -106,7 +83,7 @@ def run_installer(host_name_, db_username_, db_password_, logical_db_name_, wind
     # Tail the log file and run all against string[x]
     with open(log, 'r') as file:
         x = 0
-        for line in follow(file):
+        for line in func.follow(file):
             if strings[x] in line:
                 time.sleep(.2)
                 if x == 0 or x == 1 or x == 3 or x == 5:
@@ -296,6 +273,8 @@ db_username = ""
 db_password = ""
 logical_db_name = ""
 event_obj = threading.Event()
+
+
 while True:
     event, values = window.read()
     if event in (sg.WIN_CLOSED, "Exit"):
@@ -307,8 +286,8 @@ while True:
         if folder_location == "":
             sg.Print('No folder selected')
         else:
-            extract_install_package(folder_location, path_to_install_zip_file)
-            move_customer_package(folder_location, path_to_customer_zip_file)
+            func.extract_zip(folder_location, path_to_install_zip_file)
+            func.move_file(path_to_customer_zip_file, folder_location + "/customer/customer.zip")
             window[f'-COL2-'].update(visible=False)
             window[f'-COL3-'].update(visible=True)
     if event == '-FOLDER-':
