@@ -101,7 +101,6 @@ def wait_for_dir(directory):
 
 def argo_ready(log):
     with open(log, 'r') as file:
-        x = 0
         for line in follow(file):
             if 'SYSTEM READY' in line:
                 logging.info("SYSTEM READY")
