@@ -1,38 +1,14 @@
 import PySimpleGUI as sg
-import zipfile
-import shutil
 import subprocess
 import pyautogui
 import time
 import threading
 from ctypes import *
 import os
-from typing import Iterator
-
+import functions as func
+import logging
 
 # Functions
-#non-blocking tail
-def follow(file, sleep_sec=.1) -> Iterator[str]:
-    line = ''
-    while True:
-        tmp = file.readline()
-        if tmp is not None:
-            line += tmp
-            if line.endswith("\n"):
-                yield line
-                line = ''
-        elif sleep_sec:
-            time.sleep(sleep_sec)
-
-def extract_install_package(directory, install_zip):
-    with zipfile.ZipFile(install_zip, 'r') as zip_ref:
-        zip_ref.extractall(directory)
-
-
-def move_customer_package(directory, customer_zip):
-    shutil.move(customer_zip, (directory + "/customer/customer.zip"))
-
-
 def run_customer_installer(windows_username_, windows_password_, directory):
     directory += "/bin/customerInstaller.bat"
     print(directory)
@@ -82,31 +58,26 @@ def run_installer(host_name_, db_username_, db_password_, logical_db_name_, wind
         "Ready to (I)nstall the above changes",
         "INSTALLATION COMPLETED"
     ]
-    #Delete any existing log files for the installer.
-    if os.path.isdir(directory + '/logs/installer'):
-        for file in os.listdir(directory + '/logs/installer'):
-            os.remove(os.path.join(directory + '/logs/installer', file))
+    #Delete existing Log Files
+    func.del_all_files(directory + '/logs/installer')
 
     #Run Installer Script
     p = subprocess.Popen(['runas', '/profile', '/user:' + windows_username_,
                           directory + '/bin/installer.bat'],
                          creationflags=subprocess.CREATE_NEW_CONSOLE)
     ok = windll.user32.BlockInput(True)
-    time.sleep(5)
+    time.sleep(3)
     pyautogui.typewrite(windows_password_)
     pyautogui.press('enter')
-    time.sleep(5)
 
-    #Get path of log file
-    log = None
-    for file in os.listdir(directory + '/logs/installer'):
-        if 'installer-' in file:
-            log = directory + '/logs/installer/' + file
+    #Load log file
+    func.wait_for_dir(directory + '/logs/installer')
+    log = func.load_log(directory + '/logs/installer', 'installer-')
 
-    # Tail the log file and run all against string[x]
+    #Automate input via log file
     with open(log, 'r') as file:
         x = 0
-        for line in follow(file):
+        for line in func.follow(file):
             if strings[x] in line:
                 time.sleep(.2)
                 if x == 0 or x == 1 or x == 3 or x == 5:
@@ -150,11 +121,14 @@ def run_installer(host_name_, db_username_, db_password_, logical_db_name_, wind
                 x += 1
                 if x > 30:
                     quit()
-    window.write_event_value("-B THREAD DONE-", "Done")
     ok = windll.user32.BlockInput(False)
+    # func.uninstall_service(directory)
+    # func.install_service(directory)
+    window.write_event_value("-I THREAD DONE-", "Done")
 
 
-def run_system_config(directory, windows_username_):
+def run_system_config(directory, windows_username_, windows_password_):
+    func.stop_service("ArgoFraudComplianceService")
     strings = [
         "Select configuration process",             #2
         "Have you stopped the Argo Fraud service",  #y
@@ -163,31 +137,48 @@ def run_system_config(directory, windows_username_):
         "INSTALLATION COMPLETED SUCCESSFULLY"       #enter
     ]
 
-    directory += "./bin/configure.bat"
+    # Delete existing Log Files
+    func.del_all_files(directory + '/logs/configurator')
+
     p = subprocess.Popen(['runas', '/profile', '/user:' + windows_username_,
-                          directory],
+                          directory + '/bin/configure.bat'],
                          creationflags=subprocess.CREATE_NEW_CONSOLE)
+    time.sleep(3)
+    pyautogui.typewrite(windows_password_)
+    pyautogui.press('enter')
+
+    # Load log file
+    func.wait_for_dir(directory + '/logs/configurator')
+    func.file_exists(directory + '/logs/configurator', 'configurator-')
+    log = func.load_log(directory + '/logs/configurator', 'configurator-')
+
     ok = windll.user32.BlockInput(True)
-    time.sleep(5)
-    pyautogui.typewrite('2')
-    pyautogui.press('enter')
-    time.sleep(1)
-    pyautogui.typewrite('y')
-    pyautogui.press('enter')
-    time.sleep(1)
-    pyautogui.typewrite('y')
-    pyautogui.press('enter')
-    time.sleep(1)
-    pyautogui.typewrite('i')
-    pyautogui.press('enter')
-    time.sleep(1)
-    pyautogui.typewrite('a')
-    pyautogui.press('enter')
+    # Automate input via log file
+    with open(log, 'r') as file:
+        x = 0
+        for line in func.follow(file):
+            if strings[x] in line:
+                time.sleep(.2)
+                if x == 0:
+                    pyautogui.typewrite('2')
+                    pyautogui.press('enter')
+                elif x == 1 or x == 2:
+                    pyautogui.typewrite('y')
+                    pyautogui.press('enter')
+                elif x == 3:
+                    pyautogui.typewrite('I')
+                    pyautogui.press('enter')
+                else:
+                    pyautogui.press('enter')
+                    pyautogui.press('enter')
+                    break
+                x += 1
     ok = windll.user32.BlockInput(False)
     window.write_event_value("-S THREAD DONE-", "DONE")
 
 
-def run_bank_config(directory, windows_username_):
+def run_bank_config(directory, windows_username_, windows_password_, bank_name_):
+    func.stop_service("ArgoFraudComplianceService")
     strings = [
         "Select configuration process",             #1
         "Have you stopped the Argo Fraud service",  #y
@@ -196,31 +187,46 @@ def run_bank_config(directory, windows_username_):
         "Ready to (I)nstall the above changes",     #I
         "INSTALLATION COMPLETED SUCCESSFULLY"       #enter
     ]
-    directory += "./bin/configure.bat"
+
+    # Delete existing Log Files
+    func.del_all_files(directory + '/logs/configurator')
+
     p = subprocess.Popen(['runas', '/profile', '/user:' + windows_username_,
-                          directory],
+                          directory + '/bin/configure.bat'],
                          creationflags=subprocess.CREATE_NEW_CONSOLE)
     ok = windll.user32.BlockInput(True)
-    time.sleep(5)
-    pyautogui.typewrite('1')
+    time.sleep(3)
+    pyautogui.typewrite(windows_password_)
     pyautogui.press('enter')
-    time.sleep(1)
-    pyautogui.typewrite('y')
-    pyautogui.press('enter')
-    time.sleep(1)
-    pyautogui.typewrite('y')
-    pyautogui.press('enter')
-    time.sleep(1)
-    pyautogui.typewrite('argo')
-    pyautogui.press('enter')
-    time.sleep(1)
-    pyautogui.typewrite('I')
-    pyautogui.press('enter')
-    time.sleep(1)
-    pyautogui.typewrite('a')
-    pyautogui.press('enter')
+    # Load log file
+    func.file_exists(directory + '/logs/configurator', 'configurator-')
+    log = func.load_log(directory + '/logs/configurator', 'configurator-')
+    # Automate input via log file
+    with open(log, 'r') as file:
+        x = 0
+        for line in func.follow(file):
+            if strings[x] in line:
+                time.sleep(.2)
+                if x == 0:
+                    pyautogui.typewrite('1')
+                    pyautogui.press('enter')
+                elif x == 1 or x == 2:
+                    pyautogui.typewrite('y')
+                    pyautogui.press('enter')
+                elif x == 3:
+                    pyautogui.typewrite(bank_name_)
+                    pyautogui.press('enter')
+                elif x == 4:
+                    pyautogui.typewrite('I')
+                    pyautogui.press('enter')
+                else:
+                    pyautogui.press('enter')
+                    pyautogui.press('enter')
+                    break
+                x += 1
     ok = windll.user32.BlockInput(False)
-    window.write_event_value("-CI THREAD DONE-", "DONE")
+    window.write_event_value("-B THREAD DONE-", "DONE")
+
 
 
 # Layout Pages
@@ -251,6 +257,7 @@ get_info_installer = [[sg.Text('Installer Info', font=('Arial', 18), size=(40, 2
                       [sg.Text('Database Username ', size=(18, 1)), sg.InputText()],
                       [sg.Text('Database Password ', size=(18, 1)), sg.InputText(password_char="*")],
                       [sg.Text('Logical DB Name ', size=(18, 1)), sg.InputText()],
+                      [sg.Text('Bank Name', size=(18, 1)), sg.InputText()],
                       [sg.Text('', size=(18, 1))],
                       [sg.Button('Continue', key="gii_continue")]]
 
@@ -263,22 +270,24 @@ warning_page = [[sg.Text('Warning!', font=('Arial', 18), size=(40, 2))],
                 [sg.Button('Yes', key="wap_yes")],
                 [sg.Button('No', key="wap_no")]]
 
-run_bank_config_page = [[sg.Text('Run Installer', font=('Arial', 18), size=(40, 2))],
-                   [sg.Text('Press continue to run the bank installer script', size=(40, 3))],
-                   [sg.Button('Continue', key="bank_continue")]]
-
-run_system_config_page = [[sg.Text('Run Installer', font=('Arial', 18), size=(40, 2))],
-                     [sg.Text('Press continue to run the system installer script', size=(40, 3))],
+run_system_config_page = [[sg.Text('Configure System', font=('Arial', 18), size=(40, 2))],
+                     [sg.Text('Press continue to configure system.', size=(40, 3))],
                      [sg.Button('Continue', key="sys_continue")]]
 
+run_bank_config_page = [[sg.Text('Configure Bank', font=('Arial', 18), size=(40, 2))],
+                   [sg.Text('Press continue to configure bank.', size=(40, 3))],
+                   [sg.Button('Continue', key="bank_continue")]]
+
+
+
 layout = [[sg.Column(welcome_page, key='-COL1-'), sg.Column(folder_select_page, visible=False, key='-COL2-'),
-           sg.Column(get_credentials_page, visible=False, key='-COL3-'),
-           sg.Column(run_customer_installer_page, visible=False, key='-COL4-'),
-           sg.Column(get_info_installer, visible=False, key='-COL5-'),
-           sg.Column(run_installer_page, visible=False, key='-COL6-'),
-           sg.Column(warning_page, visible=False, key='-COL7-'),
-           sg.Column(run_bank_config_page, visible=False, key='-COL8-'),
-           sg.Column(run_system_config_page, visible=False, key='-COL9-')]]
+    sg.Column(get_credentials_page, visible=False, key='-COL3-'),
+    sg.Column(run_customer_installer_page, visible=False, key='-COL4-'),
+    sg.Column(get_info_installer, visible=False, key='-COL5-'),
+    sg.Column(run_installer_page, visible=False, key='-COL6-'),
+    sg.Column(warning_page, visible=False, key='-COL7-'),
+    sg.Column(run_system_config_page, visible=False, key='-COL8-'),
+    sg.Column(run_bank_config_page, visible=False, key='-COL9-')]]
 
 # Start GUI
 window = sg.Window('Oasis Build Installer', layout, resizable=True)
@@ -289,13 +298,14 @@ path_to_customer_zip_file = ""
 customer_folder_location = ""
 windows_username = ""
 windows_password = ""
-sys_location = ""
-bank_location = ""
 host_name = ""
 db_username = ""
 db_password = ""
 logical_db_name = ""
+bank_name = ""
 event_obj = threading.Event()
+
+
 while True:
     event, values = window.read()
     if event in (sg.WIN_CLOSED, "Exit"):
@@ -307,8 +317,8 @@ while True:
         if folder_location == "":
             sg.Print('No folder selected')
         else:
-            extract_install_package(folder_location, path_to_install_zip_file)
-            move_customer_package(folder_location, path_to_customer_zip_file)
+            func.extract_zip(folder_location, path_to_install_zip_file)
+            func.move_file(path_to_customer_zip_file, folder_location + "/customer/customer.zip")
             window[f'-COL2-'].update(visible=False)
             window[f'-COL3-'].update(visible=True)
     if event == '-FOLDER-':
@@ -335,6 +345,7 @@ while True:
         db_username = values[3]
         db_password = values[4]
         logical_db_name = values[5]
+        bank_name = values[6]
         window[f'-COL5-'].update(visible=False)
         window[f'-COL6-'].update(visible=True)
     if event == 'ri_continue':
@@ -349,20 +360,26 @@ while True:
         else:
             break
     if event == '-I THREAD DONE-':
-        window[f'COL-6'].update(visible=False)
-        window[f'COL-8'].update(visible=True)
+        window[f'-COL6-'].update(visible=False)
+        window[f'-COL8-'].update(visible=True)
     if event == 'sys_continue':
-        threading.Thread(target=run_bank_config, args=(
-            sys_location, windows_username),
-                         daemon=True).start()
-    if event == '-S THREAD DONE':
-        window[f'COL-8'].update(visible=False)
-        window[f'COL-9'].update(visible=True)
-    if event == 'bank_continue':
+        logging.info("RUNNING configure.bat for SYSTEM CONFIGURATION")
         threading.Thread(target=run_system_config, args=(
-            bank_location, windows_username),
+            folder_location, windows_username, windows_password),
+                         daemon=True).start()
+    if event == '-S THREAD DONE-':
+        window[f'-COL8-'].update(visible=False)
+        window[f'-COL9-'].update(visible=True)
+    if event == 'bank_continue':
+        logging.info("RUNNING configure.bat for BANK CONFIGURATION")
+        threading.Thread(target=run_bank_config, args=(
+            folder_location, windows_username, windows_password, bank_name),
                          daemon=True).start()
     if event == '-B THREAD DONE-':
+        func.start_service("ArgoFraudComplianceService")
+        func.wait_for_dir(folder_location + '/logs/fcs-webservice')
+        log = func.load_log(folder_location + '/logs/fcs-webservice', 'webservice-')
+        func.argo_ready(log)
         break
 
 window.close()

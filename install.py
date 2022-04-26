@@ -1,12 +1,10 @@
-import traceback
+
 from tkinter import filedialog as fd
 from tkinter import *
-import shutil
 import subprocess
 from typing import Iterator
 
 import pyautogui
-import logging
 import time
 import os
 
