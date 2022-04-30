@@ -4,6 +4,8 @@ import PySimpleGUI as sg
 import mechanize
 import functions as func
 import logging
+import glob
+
 
 # Functions
 def run_cif_import():
@@ -14,6 +16,18 @@ def run_cif_import():
     br.open("http://localhost:8080/fcs-webservice/jolokia/exec/com.argodata.fraud:name=cifImportJmxService,type"
             "=CifImportJmxService/runCifImportNow/1")
     logging.info("CIF Import COMPLETED")
+
+def read_cif_folder(files):
+    allfiles = os.listdir(files)
+    amount = len(allfiles)
+    amount -= 1
+    flag = 0
+    for f in allfiles:
+        if f.endswith('.done'):
+            flag += 1
+    if amount != flag:
+        print("ERROR with CIF import")
+
 
 # Layout Pages
 sg.theme("SystemDefaultForReal")
@@ -30,7 +44,7 @@ OASIS_folder_select_page = [[sg.Text('Select Folder', font=('Arial', 18), size=(
 
 folder_select_page = [[sg.Text('Select Folder', font=('Arial', 18), size=(40, 2))],
                       [sg.Text('Select the folder containing zip file', size=(40, 3))],
-                      [sg.Text('Folder'), sg.In(size=(25, 1), enable_events=True, key='-FOLDER2-'), sg.FolderBrowse()],
+                      [sg.Text('Folder'), sg.In(size=(25, 1), enable_events=True, key='-FOLDER2-'), sg.FileBrowse()],
                       [sg.Text('', size=(18, 1))],
                       [sg.Button('Continue', key="fs_continue")]]
 
@@ -67,6 +81,7 @@ path_to_aif_folder = ""
 path_to_cif_folder = ""
 path_to_ref_folder = ""
 path_to_sus_folder = ""
+x937_ext = ".x937"
 cif_username = ""
 cif_password = ""
 event_obj = threading.Event()
@@ -96,20 +111,43 @@ while True:
         if import_folder_location == "":
             sg.Print('No folder selected')
         else:
-            print("Extracting Data file")
-            func.extract_zip(import_folder_location, import_folder_location + "/On_US_DATA_UTD.zip")
-            func.delete_file(os.path.join(path_to_etc, 'argoAifConfig.xml'))
+            func.delete_file(os.path.join(path_to_etc, file))
             func.move_file(path_to_config_file, path_to_etc)
             window[f'-COL3-'].update(visible=False)
             window[f'-COL4-'].update(visible=True)
 
     if event == '-FOLDER2-':
-        import_folder_location = values['-FOLDER2-']
-        path_to_config_file = import_folder_location + "/On_US_DATA/ON_US_import-landing-zones/argoAifConfig.xml"
-        path_to_aif_folder = import_folder_location + "/On_US_DATA/AIF files"
-        path_to_cif_folder = import_folder_location + "/On_US_DATA/CIF/Richard CIF file"
-        path_to_ref_folder = import_folder_location + "/On_US_DATA/Richard Ref and Suspect Image/Reference Images"
-        path_to_sus_folder = import_folder_location + "/On_US_DATA/Richard Ref and Suspect Image/Suspect Image"
+        # zipfile =  C:\Users\Kasey\Desktop\test\On_US_DATA_UTD.zip
+        zipfile = values['-FOLDER2-']
+        print(zipfile)
+        # filename = On_US_DATA_UTD
+        filename = zipfile.split('/')[-1].split('.')[0]
+        print(filename)
+        # data_dir = C:\Users\Kasey\Desktop\test\On_US_DATA_UTD
+        import_folder_location = OASIS_folder_location + '/' + filename
+        print(import_folder_location)
+        func.extract_zip(import_folder_location, zipfile)
+        print("Extracting Data file")
+        name = import_folder_location.split('/')[-1].split('.')[0]
+        print(name)
+        # Get directory name of the landing zone directory
+        landing_path = None
+        path_to_aif_folder = None
+        for folder_name in os.listdir(import_folder_location):
+            if 'landing' in folder_name and os.path.isdir(os.path.join(import_folder_location, folder_name)):
+                # landing_path = C:\Users\Kasey\Desktop\test\On_US_DATA\ON_US_import-landing-zones
+                landing_path = os.path.join(import_folder_location, folder_name)
+            elif 'AIF' in folder_name and os.path.isdir(os.path.join(import_folder_location, folder_name)):
+                # path_to_aif_folder = C:\Users\Kasey\Desktop\test\On_US_DATA\AIF files
+                path_to_aif_folder = os.path.join(import_folder_location, folder_name)
+            # You can continue more elif for each directory you need.
+
+        # path_to_config_file = C:\Users\Kasey\Desktop\test\On_US_DATA\ON_US_import-landing-zones\argoAifConfig.xml
+        path_to_config_file = os.path.join(landing_path, 'argoAifConfig.xml')
+
+        # Here you would parse the argoAifConfig.xml file for the file location
+        # aif_parse_directory = ???? however you read the xml for '/data/aif-load'
+
 
     if event == 'gc_continue':
         cif_username = values[0]
@@ -124,14 +162,37 @@ while True:
         func.delete_dir(OASIS_folder_location + '/logs/fcs-webservice')
         func.start_service(service)
 
-        for file in os.listdir(path_to_cif_folder):
-            func.move_file(path_to_cif_folder + '/' + file, OASIS_folder_location + '/data/cif-load')
+        # this is meant to search through all the directories in the data directory based on 'aif' in file name or with .x937 extenstion for those files. Need to get the CIF files first
+        # it does not work still and its all still garbage
+        pattern = os.path.join(
+            os.path.expanduser('~'),
+            import_folder_location,
+            'aif*'
+        )
 
-        #Wait until log files are generated
+
+        allfiles = os.listdir(import_folder_location)
+        for f in allfiles:
+
+            if f.endswith('.csv'):
+
+                if matching_file in glob(import_folder_location):
+                    with open(matching_file, 'r') as file:
+                        func.move_file(path_to_aif_folder + '/' + file, OASIS_folder_location + '/data/aif-load')
+
+            if f.endswith('.done'):
+                flag += 1
+
+        for matching_file in glob.glob(import_folder_location):
+             with open(matching_file, 'r') as f:
+                 func.move_file(path_to_aif_folder + '/' + file, OASIS_folder_location + '/data/aif-load')
+
+
+        # Wait until log files are generated
         func.wait_for_dir(OASIS_folder_location + '/logs/fcs-webservice')
-        #Load log file
+        # Load log file
         log = func.load_log(OASIS_folder_location + '/logs/fcs-webservice', 'webservice-')
-        #Search Log file for "SYSTEM READY"
+        # Search Log file for "SYSTEM READY"
         func.argo_ready(log)
         run_cif_import()
         window[f'-COL5-'].update(visible=False)
@@ -145,6 +206,12 @@ while True:
             func.move_file(path_to_ref_folder + '/' + file, OASIS_folder_location + '/data/cash-letter-import')
         for file in os.listdir(path_to_sus_folder):
             func.move_file(path_to_sus_folder + '/' + file, OASIS_folder_location + '/data/cash-letter-import')
+
+        # check for .done, and empty import folders to show completion
+        read_cif_folder(OASIS_folder_location + "/data/cif-load")
+
+        window[f'-COL5-'].update(visible=False)
+        window[f'-COL6-'].update(visible=True)
 
     if event == '-I THREAD DONE-':
         break
