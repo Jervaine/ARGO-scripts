@@ -4,8 +4,7 @@ import PySimpleGUI as sg
 import mechanize
 import functions as func
 import logging
-import glob
-
+import re
 
 # Functions
 def run_cif_import():
@@ -17,16 +16,32 @@ def run_cif_import():
             "=CifImportJmxService/runCifImportNow/1")
     logging.info("CIF Import COMPLETED")
 
-def read_cif_folder(files):
+def read_completion_folder(option, files):
     allfiles = os.listdir(files)
     amount = len(allfiles)
     amount -= 1
     flag = 0
-    for f in allfiles:
-        if f.endswith('.done'):
-            flag += 1
-    if amount != flag:
-        print("ERROR with CIF import")
+
+    # For CIF import check
+    if option == 1:
+        for f in allfiles:
+            if f.endswith('.done'):
+                flag += 1
+        if amount != flag:
+            print("ERROR with CIF import. Check logs")
+
+    # For AIF import check
+    if option == 2:
+        if not amount == flag:
+            print("Error with AIF file import. Check logs")
+
+    # For Cash Letter import check
+    if option == 3:
+        for f in allfiles:
+            if f.endswith('.Complete'):
+                flag += 1
+        if amount != flag:
+            print("ERROR with Cash Letter import. Check logs")
 
 
 # Layout Pages
@@ -79,9 +94,9 @@ import_folder_location = ""
 path_to_config_file = ""
 path_to_aif_folder = ""
 path_to_cif_folder = ""
-path_to_ref_folder = ""
-path_to_sus_folder = ""
-x937_ext = ".x937"
+path_to_cli_folder = ""
+path_to_cli_complete = ""
+path_to_aif_complete = ""
 cif_username = ""
 cif_password = ""
 event_obj = threading.Event()
@@ -106,47 +121,52 @@ while True:
         OASIS_folder_location = values['-FOLDER1-']
         path_to_logs = OASIS_folder_location + "/logs/fcs-webservice"
         path_to_etc = OASIS_folder_location + "/etc/import-landing-zones"
+        path_to_cif_folder = OASIS_folder_location + "/data/cif-load"
+        path_to_aif_folder = OASIS_folder_location + "/data/aif-load"
+        path_to_aif_complete = OASIS_folder_location + "data/import-file-repo/1/argoAif/Complete"
+        path_to_cli_folder = OASIS_folder_location + "/data/cash-letter-import"
+        path_to_cli_complete = OASIS_folder_location + "/data/repo/cash-letter-import"
 
     if event == 'fs_continue':
         if import_folder_location == "":
             sg.Print('No folder selected')
         else:
-            func.delete_file(os.path.join(path_to_etc, file))
+
+            # ERROR for some reason changing argoAifConfig.xml is not working right????????
+
+            func.delete_file(os.path.join(path_to_etc, 'argoAifConfig.xml'))
             func.move_file(path_to_config_file, path_to_etc)
             window[f'-COL3-'].update(visible=False)
             window[f'-COL4-'].update(visible=True)
 
     if event == '-FOLDER2-':
-        # zipfile =  C:\Users\Kasey\Desktop\test\On_US_DATA_UTD.zip
         zipfile = values['-FOLDER2-']
-        print(zipfile)
-        # filename = On_US_DATA_UTD
         filename = zipfile.split('/')[-1].split('.')[0]
-        print(filename)
-        # data_dir = C:\Users\Kasey\Desktop\test\On_US_DATA_UTD
-        import_folder_location = OASIS_folder_location + '/' + filename
-        print(import_folder_location)
+        import_folder_location = os.path.join(OASIS_folder_location, filename).replace("\\","/")
+
         func.extract_zip(import_folder_location, zipfile)
         print("Extracting Data file")
-        name = import_folder_location.split('/')[-1].split('.')[0]
-        print(name)
-        # Get directory name of the landing zone directory
-        landing_path = None
-        path_to_aif_folder = None
-        for folder_name in os.listdir(import_folder_location):
-            if 'landing' in folder_name and os.path.isdir(os.path.join(import_folder_location, folder_name)):
-                # landing_path = C:\Users\Kasey\Desktop\test\On_US_DATA\ON_US_import-landing-zones
-                landing_path = os.path.join(import_folder_location, folder_name)
-            elif 'AIF' in folder_name and os.path.isdir(os.path.join(import_folder_location, folder_name)):
-                # path_to_aif_folder = C:\Users\Kasey\Desktop\test\On_US_DATA\AIF files
-                path_to_aif_folder = os.path.join(import_folder_location, folder_name)
-            # You can continue more elif for each directory you need.
+        # begin search for files and move them
+        for root, dirs, files in os.walk(import_folder_location):
+            for name in files:
 
-        # path_to_config_file = C:\Users\Kasey\Desktop\test\On_US_DATA\ON_US_import-landing-zones\argoAifConfig.xml
-        path_to_config_file = os.path.join(landing_path, 'argoAifConfig.xml')
+                if re.search("aif", name):
+                    print(name)
+                    obj = os.path.join(root, name).replace("\\","/")
+                    func.move_file(obj, path_to_aif_folder)
 
-        # Here you would parse the argoAifConfig.xml file for the file location
-        # aif_parse_directory = ???? however you read the xml for '/data/aif-load'
+                elif re.search(".x937", name):
+                    print(name)
+                    obj = os.path.join(root, name).replace("\\","/")
+                    func.move_file(obj, path_to_cli_folder)
+
+                elif re.search(".csv", name):
+                    print(name)
+                    obj = os.path.join(root, name).replace("\\","/")
+                    func.move_file(obj, path_to_cif_folder)
+
+                elif name == 'argoAifConfig.xml':
+                    path_to_config_file = os.path.join(root, name).replace("\\","/")
 
 
     if event == 'gc_continue':
@@ -162,32 +182,6 @@ while True:
         func.delete_dir(OASIS_folder_location + '/logs/fcs-webservice')
         func.start_service(service)
 
-        # this is meant to search through all the directories in the data directory based on 'aif' in file name or with .x937 extenstion for those files. Need to get the CIF files first
-        # it does not work still and its all still garbage
-        pattern = os.path.join(
-            os.path.expanduser('~'),
-            import_folder_location,
-            'aif*'
-        )
-
-
-        allfiles = os.listdir(import_folder_location)
-        for f in allfiles:
-
-            if f.endswith('.csv'):
-
-                if matching_file in glob(import_folder_location):
-                    with open(matching_file, 'r') as file:
-                        func.move_file(path_to_aif_folder + '/' + file, OASIS_folder_location + '/data/aif-load')
-
-            if f.endswith('.done'):
-                flag += 1
-
-        for matching_file in glob.glob(import_folder_location):
-             with open(matching_file, 'r') as f:
-                 func.move_file(path_to_aif_folder + '/' + file, OASIS_folder_location + '/data/aif-load')
-
-
         # Wait until log files are generated
         func.wait_for_dir(OASIS_folder_location + '/logs/fcs-webservice')
         # Load log file
@@ -199,21 +193,18 @@ while True:
         window[f'-COL6-'].update(visible=True)
 
     if event == 'rif_continue':
-        # call imports
-        for file in os.listdir(path_to_aif_folder):
-            func.move_file(path_to_aif_folder + '/' + file, OASIS_folder_location + '/data/aif-load')
-        for file in os.listdir(path_to_ref_folder):
-            func.move_file(path_to_ref_folder + '/' + file, OASIS_folder_location + '/data/cash-letter-import')
-        for file in os.listdir(path_to_sus_folder):
-            func.move_file(path_to_sus_folder + '/' + file, OASIS_folder_location + '/data/cash-letter-import')
-
         # check for .done, and empty import folders to show completion
-        read_cif_folder(OASIS_folder_location + "/data/cif-load")
+        read_completion_folder(1, path_to_cif_folder)
+
+        # ERROR this AIF completion check does not work
+        # Wait until directory is generated
+        # func.wait_for_dir(path_to_aif_complete)
+        # read_completion_folder(2, path_to_aif_complete)
+        read_completion_folder(3, path_to_cli_complete)
 
         window[f'-COL5-'].update(visible=False)
         window[f'-COL6-'].update(visible=True)
-
-    if event == '-I THREAD DONE-':
+        sleep(2)
         break
 
 window.close()
