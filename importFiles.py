@@ -5,6 +5,7 @@ import mechanize
 import functions as func
 import logging
 import re
+import time
 
 
 # Functions
@@ -18,35 +19,48 @@ def run_cif_import():
     logging.info("CIF Import COMPLETED")
 
 
-def read_completion_folder(option, files):
-    allfiles = os.listdir(files)
+def read_completion_folder(option, directory):
+    allfiles = os.listdir(directory)
     amount = len(allfiles)
-    amount -= 1
     flag = 0
 
     # For CIF import check
     if option == 1:
         print("Verifying CIF import")
-        for f in allfiles:
-            if f.endswith('.done'):
-                flag += 1
-        if amount != flag:
-            print("ERROR with CIF import. Check logs")
+        while True:
+            for f in allfiles:
+                if f.endswith('.done'):
+                    flag += 1
+            if flag < cif_count:
+                print("Waiting for CIF import...")
+                flag = 0
+                time.sleep(3)
+            elif flag == cif_count:
+                break
 
     # For AIF import check
     if option == 2:
         print("Verifying AIF import")
-        if not amount == flag:
-            print("Error with AIF file import. Check logs")
+        while True:
+            if amount < aif_count:
+                print("Waiting for AIF import...")
+                allfiles = os.listdir(directory)
+                amount = len(allfiles)
+                time.sleep(3)
+            elif amount == aif_count:
+                break
 
     # For Cash Letter import check
     if option == 3:
         print("Verifying Cash Letter import")
-        for f in allfiles:
-            if f.endswith('.Complete'):
-                flag += 1
-        if amount != flag:
-            print("ERROR with Cash Letter import. Check logs")
+        while True:
+            if amount < cli_count:
+                print("Waiting for Cash Letter import...")
+                allfiles = os.listdir(directory)
+                amount = len(allfiles)
+                time.sleep(3)
+            elif amount == cli_count:
+                break
 
 
 # Layout Pages
@@ -102,6 +116,9 @@ path_to_cif_folder = ""
 path_to_cli_folder = ""
 path_to_cli_complete = ""
 path_to_aif_complete = ""
+cif_count = 0
+aif_count = 0
+cli_count = 0
 cif_username = ""
 cif_password = ""
 event_obj = threading.Event()
@@ -128,7 +145,7 @@ while True:
         path_to_etc = OASIS_folder_location + "/etc/import-landing-zones"
         path_to_cif_folder = OASIS_folder_location + "/data/cif-load"
         path_to_aif_folder = OASIS_folder_location + "/data/aif-load"
-        path_to_aif_complete = OASIS_folder_location + "data/import-file-repo/1/argoAif/Complete"
+        path_to_aif_complete = OASIS_folder_location + "/data/import-file-repo/1/argoAif/Complete"
         path_to_cli_folder = OASIS_folder_location + "/data/cash-letter-import"
         path_to_cli_complete = OASIS_folder_location + "/data/repo/cash-letter-import"
 
@@ -158,14 +175,17 @@ while True:
                 if re.search("aif", name):
                     obj = os.path.join(root, name).replace("\\", "/")
                     func.move_file(obj, path_to_aif_folder)
+                    aif_count += 1
                 # search for all x937 files
                 elif re.search(".x937", name):
                     obj = os.path.join(root, name).replace("\\", "/")
                     func.move_file(obj, path_to_cli_folder)
+                    cli_count += 1
                 # search for all CIF files after clearing out AIF files
                 elif re.search(".csv", name):
                     obj = os.path.join(root, name).replace("\\", "/")
                     func.move_file(obj, path_to_cif_folder)
+                    cif_count += 1
                 # search for all config file
                 elif name == 'argoAifConfig.xml':
                     path_to_config_file = os.path.join(root, name).replace("\\", "/")
@@ -196,9 +216,11 @@ while True:
     if event == 'rif_continue':
         # check for .done, and .complete on files for each imports
         read_completion_folder(1, path_to_cif_folder)
+        print("CIF IMPORT COMPLETE")
         # Wait until aif directory is generated
         func.wait_for_dir(path_to_aif_complete)
         read_completion_folder(2, path_to_aif_complete)
+        print("AIF IMPORT COMPLETE")
         read_completion_folder(3, path_to_cli_complete)
         print("File imports complete")
         break
