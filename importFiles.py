@@ -26,6 +26,7 @@ def read_completion_folder(option, files):
 
     # For CIF import check
     if option == 1:
+        print("Verifying CIF import")
         for f in allfiles:
             if f.endswith('.done'):
                 flag += 1
@@ -34,11 +35,13 @@ def read_completion_folder(option, files):
 
     # For AIF import check
     if option == 2:
+        print("Verifying AIF import")
         if not amount == flag:
             print("Error with AIF file import. Check logs")
 
     # For Cash Letter import check
     if option == 3:
+        print("Verifying Cash Letter import")
         for f in allfiles:
             if f.endswith('.Complete'):
                 flag += 1
@@ -153,19 +156,19 @@ while True:
         for root, dirs, files in os.walk(import_folder_location):
             dirs[:] = [d for d in dirs if d not in exclude]
             for name in files:
-
+                # search for all AIF files
                 if re.search("aif", name):
                     obj = os.path.join(root, name).replace("\\", "/")
                     func.move_file(obj, path_to_aif_folder)
-
+                # search for all x937 files
                 elif re.search(".x937", name):
                     obj = os.path.join(root, name).replace("\\", "/")
                     func.move_file(obj, path_to_cli_folder)
-
+                # search for all CIF files after clearing out AIF files
                 elif re.search(".csv", name):
                     obj = os.path.join(root, name).replace("\\", "/")
                     func.move_file(obj, path_to_cif_folder)
-
+                # search for all config file
                 elif name == 'argoAifConfig.xml':
                     path_to_config_file = os.path.join(root, name).replace("\\", "/")
 
@@ -195,15 +198,11 @@ while True:
     if event == 'rif_continue':
         # check for .done, and empty import folders to show completion
         read_completion_folder(1, path_to_cif_folder)
-
-        # ERROR this AIF completion check does not work
         # Wait until directory is generated
         func.wait_for_dir(path_to_aif_complete)
         read_completion_folder(2, path_to_aif_complete)
         read_completion_folder(3, path_to_cli_complete)
-
-        window[f'-COL5-'].update(visible=False)
-        window[f'-COL6-'].update(visible=True)
+        print("File imports complete")
         break
 
 window.close()
