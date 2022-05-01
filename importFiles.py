@@ -6,6 +6,7 @@ import functions as func
 import logging
 import re
 
+
 # Functions
 def run_cif_import():
     logging.info("Running CIF Import")
@@ -15,6 +16,7 @@ def run_cif_import():
     br.open("http://localhost:8080/fcs-webservice/jolokia/exec/com.argodata.fraud:name=cifImportJmxService,type"
             "=CifImportJmxService/runCifImportNow/1")
     logging.info("CIF Import COMPLETED")
+
 
 def read_completion_folder(option, files):
     allfiles = os.listdir(files)
@@ -134,7 +136,7 @@ while True:
 
             # ERROR for some reason changing argoAifConfig.xml is not working right????????
 
-            func.delete_file(os.path.join(path_to_etc, 'argoAifConfig.xml'))
+            func.delete_file(os.path.join(path_to_etc, 'argoAifConfig.xml').replace("\\", "/"))
             func.move_file(path_to_config_file, path_to_etc)
             window[f'-COL3-'].update(visible=False)
             window[f'-COL4-'].update(visible=True)
@@ -142,32 +144,30 @@ while True:
     if event == '-FOLDER2-':
         zipfile = values['-FOLDER2-']
         filename = zipfile.split('/')[-1].split('.')[0]
-        import_folder_location = os.path.join(OASIS_folder_location, filename).replace("\\","/")
+        import_folder_location = os.path.join(OASIS_folder_location, filename).replace("\\", "/")
 
         func.extract_zip(import_folder_location, zipfile)
         print("Extracting Data file")
         # begin search for files and move them
+        exclude = set(['examples', 'fcs-webservice', 'Without AIF test X937'])
         for root, dirs, files in os.walk(import_folder_location):
+            dirs[:] = [d for d in dirs if d not in exclude]
             for name in files:
 
                 if re.search("aif", name):
-                    print(name)
-                    obj = os.path.join(root, name).replace("\\","/")
+                    obj = os.path.join(root, name).replace("\\", "/")
                     func.move_file(obj, path_to_aif_folder)
 
                 elif re.search(".x937", name):
-                    print(name)
-                    obj = os.path.join(root, name).replace("\\","/")
+                    obj = os.path.join(root, name).replace("\\", "/")
                     func.move_file(obj, path_to_cli_folder)
 
                 elif re.search(".csv", name):
-                    print(name)
-                    obj = os.path.join(root, name).replace("\\","/")
+                    obj = os.path.join(root, name).replace("\\", "/")
                     func.move_file(obj, path_to_cif_folder)
 
                 elif name == 'argoAifConfig.xml':
-                    path_to_config_file = os.path.join(root, name).replace("\\","/")
-
+                    path_to_config_file = os.path.join(root, name).replace("\\", "/")
 
     if event == 'gc_continue':
         cif_username = values[0]
@@ -198,13 +198,12 @@ while True:
 
         # ERROR this AIF completion check does not work
         # Wait until directory is generated
-        # func.wait_for_dir(path_to_aif_complete)
-        # read_completion_folder(2, path_to_aif_complete)
+        func.wait_for_dir(path_to_aif_complete)
+        read_completion_folder(2, path_to_aif_complete)
         read_completion_folder(3, path_to_cli_complete)
 
         window[f'-COL5-'].update(visible=False)
         window[f'-COL6-'].update(visible=True)
-        sleep(2)
         break
 
 window.close()
