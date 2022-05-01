@@ -80,7 +80,7 @@ run_restart_OASIS_page = [[sg.Text('Restarting OASIS', font=('Arial', 18), size=
                           [sg.Button('Continue', key="sr_continue")]]
 
 completed_files_page = [[sg.Text('Import files', font=('Arial', 18), size=(40, 2))],
-                        [sg.Text('Press continue to run the import files script', size=(40, 3))],
+                        [sg.Text('Press continue to complete process', size=(40, 3))],
                         [sg.Button('Continue', key="rif_continue")]]
 
 layout = [[sg.Column(welcome_page, key='-COL1-'), sg.Column(OASIS_folder_select_page, visible=False, key='-COL2-'),
@@ -136,9 +136,7 @@ while True:
         if import_folder_location == "":
             sg.Print('No folder selected')
         else:
-
-            # ERROR for some reason changing argoAifConfig.xml is not working right????????
-
+            # Transport the Config file from data import
             func.delete_file(os.path.join(path_to_etc, 'argoAifConfig.xml').replace("\\", "/"))
             func.move_file(path_to_config_file, path_to_etc)
             window[f'-COL3-'].update(visible=False)
@@ -196,9 +194,9 @@ while True:
         window[f'-COL6-'].update(visible=True)
 
     if event == 'rif_continue':
-        # check for .done, and empty import folders to show completion
+        # check for .done, and .complete on files for each imports
         read_completion_folder(1, path_to_cif_folder)
-        # Wait until directory is generated
+        # Wait until aif directory is generated
         func.wait_for_dir(path_to_aif_complete)
         read_completion_folder(2, path_to_aif_complete)
         read_completion_folder(3, path_to_cli_complete)
