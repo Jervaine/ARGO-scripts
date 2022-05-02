@@ -6,6 +6,7 @@ import functions as func
 import logging
 import re
 import time
+import pathlib
 
 
 # Functions
@@ -14,8 +15,9 @@ def run_cif_import():
     br = mechanize.Browser()
     br.add_password("http://localhost:8080/fcs-webservice/jolokia/exec/com.argodata.fraud:name"
                     "=cifImportJmxService,type=CifImportJmxService/runCifImportNow/1", cif_username, cif_password)
-    br.open("http://localhost:8080/fcs-webservice/jolokia/exec/com.argodata.fraud:name=cifImportJmxService,type"
+    resp1 = br.open("http://localhost:8080/fcs-webservice/jolokia/exec/com.argodata.fraud:name=cifImportJmxService,type"
             "=CifImportJmxService/runCifImportNow/1")
+    print(resp1)
     logging.info("CIF Import COMPLETED")
 
 
@@ -29,7 +31,8 @@ def read_completion_folder(option, directory):
         print("Verifying CIF import")
         while True:
             for f in allfiles:
-                if f.endswith('.done'):
+                ext = pathlib.Path(f).suffix
+                if ext == '.done':
                     flag += 1
             if flag < cif_count:
                 print("Waiting for CIF import...")
@@ -54,12 +57,16 @@ def read_completion_folder(option, directory):
     if option == 3:
         print("Verifying Cash Letter import")
         while True:
-            if amount < cli_count:
+            for f in allfiles:
+                ext = pathlib.Path(f).suffix
+                if ext == '.Complete':
+                    flag += 1
+            if flag < cli_count:
                 print("Waiting for Cash Letter import...")
                 allfiles = os.listdir(directory)
-                amount = len(allfiles)
+                flag = 0
                 time.sleep(3)
-            elif amount == cli_count:
+            elif flag == cli_count:
                 break
 
 
@@ -153,6 +160,33 @@ while True:
         if import_folder_location == "":
             sg.Print('No folder selected')
         else:
+            func.extract_zip(import_folder_location, zipfile)
+            print("Extracting Data file")
+
+            # Begin search for files and move them
+            exclude = set(['examples', 'fcs-webservice', 'Without AIF test X937'])
+            for root, dirs, files in os.walk(import_folder_location):
+                dirs[:] = [d for d in dirs if d not in exclude]
+                for name in files:
+                    # search for all AIF files
+                    if re.search("aif", name):
+                        obj = os.path.join(root, name).replace("\\", "/")
+                        func.move_file(obj, path_to_aif_folder)
+                        aif_count += 1
+                    # search for all x937 files
+                    elif re.search(".x937", name):
+                        obj = os.path.join(root, name).replace("\\", "/")
+                        func.move_file(obj, path_to_cli_folder)
+                        cli_count += 1
+                    # search for all CIF files after clearing out AIF files
+                    elif re.search(".csv", name):
+                        obj = os.path.join(root, name).replace("\\", "/")
+                        func.move_file(obj, path_to_cif_folder)
+                        cif_count += 1
+                    # search for all config file
+                    elif name == 'argoAifConfig.xml':
+                        path_to_config_file = os.path.join(root, name).replace("\\", "/")
+
             # Transport the Config file from data import
             func.delete_file(os.path.join(path_to_etc, 'argoAifConfig.xml').replace("\\", "/"))
             func.move_file(path_to_config_file, path_to_etc)
@@ -163,32 +197,6 @@ while True:
         zipfile = values['-FOLDER2-']
         filename = zipfile.split('/')[-1].split('.')[0]
         import_folder_location = os.path.join(OASIS_folder_location, filename).replace("\\", "/")
-
-        func.extract_zip(import_folder_location, zipfile)
-        print("Extracting Data file")
-        # begin search for files and move them
-        exclude = set(['examples', 'fcs-webservice', 'Without AIF test X937'])
-        for root, dirs, files in os.walk(import_folder_location):
-            dirs[:] = [d for d in dirs if d not in exclude]
-            for name in files:
-                # search for all AIF files
-                if re.search("aif", name):
-                    obj = os.path.join(root, name).replace("\\", "/")
-                    func.move_file(obj, path_to_aif_folder)
-                    aif_count += 1
-                # search for all x937 files
-                elif re.search(".x937", name):
-                    obj = os.path.join(root, name).replace("\\", "/")
-                    func.move_file(obj, path_to_cli_folder)
-                    cli_count += 1
-                # search for all CIF files after clearing out AIF files
-                elif re.search(".csv", name):
-                    obj = os.path.join(root, name).replace("\\", "/")
-                    func.move_file(obj, path_to_cif_folder)
-                    cif_count += 1
-                # search for all config file
-                elif name == 'argoAifConfig.xml':
-                    path_to_config_file = os.path.join(root, name).replace("\\", "/")
 
     if event == 'gc_continue':
         cif_username = values[0]
