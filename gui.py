@@ -6,7 +6,6 @@ import threading
 from ctypes import *
 import os
 import functions as func
-import logging
 
 # Functions
 def run_customer_installer(windows_username_, windows_password_, directory):

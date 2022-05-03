@@ -3,7 +3,6 @@ import threading
 import PySimpleGUI as sg
 import mechanize
 import functions as func
-import logging
 import re
 import time
 import pathlib

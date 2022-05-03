@@ -4,7 +4,6 @@ import zipfile
 import shutil
 import win32service
 import win32serviceutil
-import logging
 import os
 #import subprocess
 
