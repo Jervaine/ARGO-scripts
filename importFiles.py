@@ -11,14 +11,20 @@ import pathlib
 
 # Functions
 def run_cif_import():
-    logging.info("Running CIF Import")
+    print("Running CIF Import")
+    ua = mechanize.UserAgent()
+    ua.set_seekable_responses(False)
+    ua.set_handle_equiv(False)
+    ua.set_debug_responses(False)
+
     br = mechanize.Browser()
     br.add_password("http://localhost:8080/fcs-webservice/jolokia/exec/com.argodata.fraud:name"
                     "=cifImportJmxService,type=CifImportJmxService/runCifImportNow/1", cif_username, cif_password)
     resp1 = br.open("http://localhost:8080/fcs-webservice/jolokia/exec/com.argodata.fraud:name=cifImportJmxService,type"
             "=CifImportJmxService/runCifImportNow/1")
-    print(resp1)
-    logging.info("CIF Import COMPLETED")
+    print(resp1.code)
+    br.clear_history()
+    print("CIF Import COMPLETED")
 
 
 def read_completion_folder(option, directory):
@@ -234,4 +240,3 @@ while True:
         break
 
 window.close()
-quit()

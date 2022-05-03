@@ -363,7 +363,7 @@ while True:
         window[f'-COL6-'].update(visible=False)
         window[f'-COL8-'].update(visible=True)
     if event == 'sys_continue':
-        logging.info("RUNNING configure.bat for SYSTEM CONFIGURATION")
+        print("RUNNING configure.bat for SYSTEM CONFIGURATION")
         threading.Thread(target=run_system_config, args=(
             folder_location, windows_username, windows_password),
                          daemon=True).start()
@@ -371,7 +371,7 @@ while True:
         window[f'-COL8-'].update(visible=False)
         window[f'-COL9-'].update(visible=True)
     if event == 'bank_continue':
-        logging.info("RUNNING configure.bat for BANK CONFIGURATION")
+        print("RUNNING configure.bat for BANK CONFIGURATION")
         threading.Thread(target=run_bank_config, args=(
             folder_location, windows_username, windows_password, bank_name),
                          daemon=True).start()
@@ -380,7 +380,7 @@ while True:
         func.wait_for_dir(folder_location + '/logs/fcs-webservice')
         log = func.load_log(folder_location + '/logs/fcs-webservice', 'webservice-')
         func.argo_ready(log)
+        #Prompt Users to Check Errors
         break
 
 window.close()
-quit()
