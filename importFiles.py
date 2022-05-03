@@ -35,7 +35,7 @@ def read_completion_folder(option, directory):
                 if ext == '.done':
                     flag += 1
             if flag < cif_count:
-                print("Waiting for CIF import...")
+                print("Waiting for CIF import. (File " + str(flag) + " of " + str(cif_count) + " complete)")
                 flag = 0
                 time.sleep(3)
             elif flag == cif_count:
@@ -46,7 +46,7 @@ def read_completion_folder(option, directory):
         print("Verifying AIF import")
         while True:
             if amount < aif_count:
-                print("Waiting for AIF import...")
+                print("Waiting for AIF import. (File " + str(amount) + " of " + str(aif_count) + " complete)")
                 allfiles = os.listdir(directory)
                 amount = len(allfiles)
                 time.sleep(3)
@@ -62,7 +62,7 @@ def read_completion_folder(option, directory):
                 if ext == '.Complete':
                     flag += 1
             if flag < cli_count:
-                print("Waiting for Cash Letter import...")
+                print("Waiting for Cash Letter import. (File " + str(flag) + " of " + str(cli_count) + " complete)")
                 allfiles = os.listdir(directory)
                 flag = 0
                 time.sleep(3)
