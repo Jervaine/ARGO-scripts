@@ -1,7 +1,8 @@
 # ARGO-scripts
 ### Required Software:
 * [Python](https://www.python.org/downloads/)
-* Install all required libraries prior to running both scripts using     `pip install`
+* Install all required libraries prior to running both scripts using `pip install`
+* May need to additionally run `pip install pywin32` in order to Start/Stop "ARGO Fraud Compliance Services" window service
 
 ## Project Build
 Automates process that creates the OASIS build.
