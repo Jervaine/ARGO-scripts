@@ -1,7 +1,7 @@
 # ARGO-scripts
 ### Required Software:
 * [Python](https://www.python.org/downloads/)
-* Install all required libraries prior to running both scripts
+* Install all required libraries prior to running both scripts using     `pip install`
 
 ## Project Build
 Automates process that creates the OASIS build.
