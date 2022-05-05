@@ -5,6 +5,7 @@
 * May need to additionally run `pip install pywin32` in order to Start/Stop "ARGO Fraud Compliance Services" window service
 
 ## Project Build
+### gui.py
 Automates process that creates the OASIS build.
 Requires:
 * Zip folders of OASIS build and Customer data
@@ -12,6 +13,7 @@ Requires:
 * Valid SQL connection
 
 ## Import Files
+### importFiles.py
 Automates process that imports files into the OASIS build.
 Requires:
 * Zip folder of file data
