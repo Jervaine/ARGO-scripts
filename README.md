@@ -14,5 +14,5 @@ Requires:
 Automates process that imports files into the OASIS build.
 Requires:
 * Zip folder of file data
-* CIF JMX command Credentials
+* JMX command Credentials
 * Current running setup of OASIS
